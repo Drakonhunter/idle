@@ -5,7 +5,7 @@ import {
   GROW_MS,
   MANUAL_HARVEST_GOLD,
   WORKER_HARVEST_GOLD,
-  WORKER_HIRE_COST,
+  nextWorkerHireCost,
   STARTING_GOLD,
   STARTING_PLOT_COUNT,
 } from "./types";
@@ -14,12 +14,16 @@ function freshPlots(count: number): PlotState[] {
   return Array.from({ length: count }, () => ({ kind: "empty" as const }));
 }
 
+function freshWorkerSlots(count: number): boolean[] {
+  return Array.from({ length: count }, () => false);
+}
+
 export function createInitialState(now: number): GameState {
   return {
-    version: 2,
+    version: 3,
     gold: STARTING_GOLD,
     plots: freshPlots(STARTING_PLOT_COUNT),
-    hasWorker: false,
+    plotWorkers: freshWorkerSlots(STARTING_PLOT_COUNT),
     lastSavedAt: now,
   };
 }
@@ -41,11 +45,11 @@ function advanceGrowing(plot: PlotState, now: number): PlotState {
  */
 export function advanceStateToNow(state: GameState, now: number): GameState {
   let gold = state.gold;
-  const plots = state.plots.map((plot) => {
+  const plots = state.plots.map((plot, i) => {
     const p = advanceGrowing(plot, now);
     if (
       p.kind === "ready" &&
-      state.hasWorker &&
+      state.plotWorkers[i] &&
       now >= p.ripenedAt + GROW_MS
     ) {
       gold += WORKER_HARVEST_GOLD;
@@ -98,14 +102,40 @@ export function harvestPlot(
   };
 }
 
-export function hireWorker(state: GameState, now: number): GameState | null {
-  if (state.hasWorker) return null;
-  if (state.gold < WORKER_HIRE_COST) return null;
+export function buyPlot(
+  state: GameState,
+  now: number,
+  cost: number,
+): GameState | null {
+  if (state.gold < cost) return null;
   return advanceStateToNow(
     {
       ...state,
-      gold: state.gold - WORKER_HIRE_COST,
-      hasWorker: true,
+      gold: state.gold - cost,
+      plots: [...state.plots, { kind: "empty" as const }],
+      plotWorkers: [...state.plotWorkers, false],
+      lastSavedAt: now,
+    },
+    now,
+  );
+}
+
+export function hireWorkerForPlot(
+  state: GameState,
+  plotIndex: number,
+  now: number,
+): GameState | null {
+  if (plotIndex < 0 || plotIndex >= state.plotWorkers.length) return null;
+  if (state.plotWorkers[plotIndex]) return null;
+  const cost = nextWorkerHireCost(state.plotWorkers);
+  if (state.gold < cost) return null;
+  const nextWorkers = [...state.plotWorkers];
+  nextWorkers[plotIndex] = true;
+  return advanceStateToNow(
+    {
+      ...state,
+      gold: state.gold - cost,
+      plotWorkers: nextWorkers,
       lastSavedAt: now,
     },
     now,

@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  buyPlot,
   harvestPlot,
+  hireWorkerForPlot,
   plantInPlot,
   advanceStateToNow,
-  hireWorker,
 } from "@/lib/game/state";
 import { loadGame, saveGame } from "@/lib/game/persistence";
 import type { CropId, GameState } from "@/lib/game/types";
-import { GROW_MS, WORKER_HIRE_COST } from "@/lib/game/types";
+import { GROW_MS, nextWorkerHireCost, plotPurchaseCost } from "@/lib/game/types";
 
 const TICK_MS = 500;
 const SAVE_DEBOUNCE_MS = 400;
@@ -78,17 +79,39 @@ export function useIdleGame() {
     [setAndPersist],
   );
 
-  const hireFarmWorker = useCallback(() => {
+  const buyNextPlot = useCallback(() => {
     setAndPersist((s) => {
       const t = Date.now();
-      return hireWorker(s, t) ?? s;
+      const cost = plotPurchaseCost(s.plots.length);
+      return buyPlot(s, t, cost) ?? s;
     });
   }, [setAndPersist]);
 
-  const canHireWorker =
-    effectiveState != null &&
-    !effectiveState.hasWorker &&
-    effectiveState.gold >= WORKER_HIRE_COST;
+  const hireWorkerOnPlot = useCallback(
+    (plotIndex: number) => {
+      setAndPersist((s) => {
+        const t = Date.now();
+        return hireWorkerForPlot(s, plotIndex, t) ?? s;
+      });
+    },
+    [setAndPersist],
+  );
+
+  const nextPlotCost =
+    effectiveState != null
+      ? plotPurchaseCost(effectiveState.plots.length)
+      : 0;
+
+  const nextWorkerCost =
+    effectiveState != null
+      ? nextWorkerHireCost(effectiveState.plotWorkers)
+      : 0;
+
+  const canBuyPlot =
+    effectiveState != null && effectiveState.gold >= nextPlotCost;
+
+  const canAffordNextWorker =
+    effectiveState != null && effectiveState.gold >= nextWorkerCost;
 
   return {
     state: effectiveState,
@@ -96,8 +119,11 @@ export function useIdleGame() {
     growMs: GROW_MS,
     plantCrop,
     harvest,
-    hireFarmWorker,
-    canHireWorker,
-    workerHireCost: WORKER_HIRE_COST,
+    buyNextPlot,
+    hireWorkerOnPlot,
+    nextPlotCost,
+    nextWorkerCost,
+    canBuyPlot,
+    canAffordNextWorker,
   };
 }

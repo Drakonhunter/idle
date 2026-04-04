@@ -124,6 +124,31 @@
   transition: width 0.2s linear;
 }
 
+.hireBtn {
+  width: 100%;
+  max-width: 8.5rem;
+  margin-top: 0.35rem;
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 0.3rem 0.45rem;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(180deg, #e8eaf6, #c5cae9);
+  box-shadow: 0 2px 0 var(--panel-border);
+}
+
+.hireBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hireBtn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--panel-border);
+}
+
 .readyPulse {
   animation: pulse 0.9s ease-in-out infinite;
 }

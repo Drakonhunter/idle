@@ -11,23 +11,28 @@ export default function Home() {
     now,
     plantCrop,
     harvest,
-    hireFarmWorker,
-    canHireWorker,
-    workerHireCost,
+    buyNextPlot,
+    hireWorkerOnPlot,
+    nextPlotCost,
+    nextWorkerCost,
+    canBuyPlot,
+    canAffordNextWorker,
   } = useIdleGame();
 
   if (!state) {
     return <p className={styles.loading}>Loading your tiny kingdom…</p>;
   }
 
+  const hiredHands = state.plotWorkers.filter(Boolean).length;
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>Tiny Kingdom Idle</h1>
         <p className={styles.tagline}>
-          Tap to harvest for {MANUAL_HARVEST_GOLD} gold per crop, or hire a
-          worker for {WORKER_HARVEST_GOLD} gold while you are away — active play
-          pays better for now.
+          Carrots grow fast — tap to harvest for {MANUAL_HARVEST_GOLD} gold, or
+          hire a field hand per plot for {WORKER_HARVEST_GOLD} gold per auto
+          harvest (hands get pricier each time you hire).
         </p>
       </header>
 
@@ -37,10 +42,12 @@ export default function Home() {
             <span aria-hidden>🪙</span>
             <span>{Math.floor(state.gold)} gold</span>
           </span>
-          {state.hasWorker && (
+          {hiredHands > 0 && (
             <span className={`${styles.pill} ${styles.pillWorker}`}>
               <span aria-hidden>🧑‍🌾</span>
-              <span>Worker hired</span>
+              <span>
+                {hiredHands} field hand{hiredHands === 1 ? "" : "s"}
+              </span>
             </span>
           )}
         </div>
@@ -53,26 +60,26 @@ export default function Home() {
               plotIndex={i}
               plot={plot}
               now={now}
-              hasWorker={state.hasWorker}
+              hasWorker={state.plotWorkers[i] ?? false}
+              workerHireCost={nextWorkerCost}
+              canAffordWorker={canAffordNextWorker}
               onPlantCrop={plantCrop}
               onHarvest={harvest}
+              onHireWorker={hireWorkerOnPlot}
             />
           ))}
         </div>
 
         <div className={styles.actions}>
           <div className={styles.btnRow}>
-            {!state.hasWorker && (
-              <button
-                type="button"
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={hireFarmWorker}
-                disabled={!canHireWorker}
-                title={`Auto-harvests ripe crops after the same time they took to grow (${WORKER_HARVEST_GOLD} gold each)`}
-              >
-                Hire worker ({workerHireCost} gold)
-              </button>
-            )}
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              onClick={buyNextPlot}
+              disabled={!canBuyPlot}
+            >
+              Buy field ({nextPlotCost} gold)
+            </button>
           </div>
         </div>
 

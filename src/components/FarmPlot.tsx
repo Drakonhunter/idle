@@ -9,8 +9,11 @@ type Props = {
   plotIndex: number;
   now: number;
   hasWorker: boolean;
+  workerHireCost: number;
+  canAffordWorker: boolean;
   onPlantCrop: (plotIndex: number, crop: CropId) => void;
   onHarvest: (i: number) => void;
+  onHireWorker: (plotIndex: number) => void;
 };
 
 function labelFor(plot: PlotState, now: number): { emoji: string; text: string } {
@@ -26,8 +29,11 @@ export function FarmPlot({
   plotIndex,
   now,
   hasWorker,
+  workerHireCost,
+  canAffordWorker,
   onPlantCrop,
   onHarvest,
+  onHireWorker,
 }: Props) {
   const { emoji, text } = labelFor(plot, now);
   const growing = plot.kind === "growing";
@@ -48,62 +54,82 @@ export function FarmPlot({
     if (plot.kind === "ready") onHarvest(plotIndex);
   };
 
+  const hireRow = !hasWorker ? (
+    <button
+      type="button"
+      className={styles.hireBtn}
+      onClick={() => onHireWorker(plotIndex)}
+      disabled={!canAffordWorker}
+      title={`Auto-harvest on this field after ${GROW_MS / 1000}s once ripe (${workerHireCost} gold)`}
+    >
+      Hire worker ({workerHireCost}g)
+    </button>
+  ) : null;
+
   return (
     <div className={styles.plotWrap}>
       {plot.kind === "empty" ? (
-        <div className={styles.plot} data-state="empty">
-          <span className={styles.inner}>
-            <span className={styles.emoji} aria-hidden>
-              {emoji}
-            </span>
-            <span className={styles.chooseLabel}>{text}</span>
-            <div className={styles.cropRow}>
-              <button
-                type="button"
-                className={styles.cropBtn}
-                onClick={() => onPlantCrop(plotIndex, "carrot")}
-              >
-                🥕 Carrots
-              </button>
-            </div>
-          </span>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className={`${styles.plot} ${plot.kind === "ready" ? styles.readyPulse : ""}`}
-          onClick={handleHarvest}
-          disabled={plot.kind === "growing"}
-          aria-label={
-            plot.kind === "growing" ? "Crop growing" : "Harvest crop for bonus gold"
-          }
-        >
-          <span className={styles.inner}>
-            <span className={styles.emoji} aria-hidden>
-              {emoji}
-            </span>
-            <span>{text}</span>
-            {growing && (
-              <span className={styles.barWrap}>
-                <span
-                  className={styles.bar}
-                  style={{ width: `${progress}%` }}
-                />
+        <>
+          <div className={styles.plot} data-state="empty">
+            <span className={styles.inner}>
+              <span className={styles.emoji} aria-hidden>
+                {emoji}
               </span>
-            )}
-            {plot.kind === "ready" && hasWorker && (
-              <span className={styles.workerLine}>
-                <span className={styles.workerLabel}>Worker</span>
+              <span className={styles.chooseLabel}>{text}</span>
+              <div className={styles.cropRow}>
+                <button
+                  type="button"
+                  className={styles.cropBtn}
+                  onClick={() => onPlantCrop(plotIndex, "carrot")}
+                >
+                  🥕 Carrots
+                </button>
+              </div>
+            </span>
+          </div>
+          {hireRow}
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            className={`${styles.plot} ${plot.kind === "ready" ? styles.readyPulse : ""}`}
+            onClick={handleHarvest}
+            disabled={plot.kind === "growing"}
+            aria-label={
+              plot.kind === "growing"
+                ? "Crop growing"
+                : "Harvest crop for bonus gold"
+            }
+          >
+            <span className={styles.inner}>
+              <span className={styles.emoji} aria-hidden>
+                {emoji}
+              </span>
+              <span>{text}</span>
+              {growing && (
                 <span className={styles.barWrap}>
                   <span
-                    className={styles.barWorker}
-                    style={{ width: `${workerHarvestProgress}%` }}
+                    className={styles.bar}
+                    style={{ width: `${progress}%` }}
                   />
                 </span>
-              </span>
-            )}
-          </span>
-        </button>
+              )}
+              {plot.kind === "ready" && hasWorker && (
+                <span className={styles.workerLine}>
+                  <span className={styles.workerLabel}>Worker</span>
+                  <span className={styles.barWrap}>
+                    <span
+                      className={styles.barWorker}
+                      style={{ width: `${workerHarvestProgress}%` }}
+                    />
+                  </span>
+                </span>
+              )}
+            </span>
+          </button>
+          {hireRow}
+        </>
       )}
     </div>
   );

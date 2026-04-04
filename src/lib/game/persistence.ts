@@ -16,6 +16,14 @@ type LegacyV1State = {
   lastFieldWorkAt: number;
 };
 
+type LegacyV2State = {
+  version: 2;
+  gold: number;
+  plots: PlotState[];
+  hasWorker: boolean;
+  lastSavedAt: number;
+};
+
 function migratePlotV1(p: LegacyV1Plot): PlotState {
   if (p.kind === "empty") return { kind: "empty" };
   if (p.kind === "growing")
@@ -23,15 +31,45 @@ function migratePlotV1(p: LegacyV1Plot): PlotState {
   return { kind: "ready", crop: "carrot", ripenedAt: p.ripenedAt };
 }
 
-function migrateV1ToV2(parsed: LegacyV1State, now: number): GameState {
+function workerSlotsForPlotCount(count: number): boolean[] {
+  return Array.from({ length: count }, () => false);
+}
+
+function alignPlotWorkers(
+  plots: PlotState[],
+  plotWorkers: boolean[] | undefined,
+): boolean[] {
+  const n = plots.length;
+  const base = plotWorkers ?? [];
+  const next = base.slice(0, n);
+  while (next.length < n) next.push(false);
+  return next;
+}
+
+function migrateV1ToV3(parsed: LegacyV1State, now: number): GameState {
   const migrated = parsed.plots.map(migratePlotV1);
   const plots: PlotState[] =
-    migrated.length === 0 ? [{ kind: "empty" }] : migrated.slice(0, 1);
+    migrated.length === 0 ? [{ kind: "empty" }] : migrated;
   return {
-    version: 2,
+    version: 3,
     gold: Number(parsed.gold) || 0,
     plots,
-    hasWorker: false,
+    plotWorkers: workerSlotsForPlotCount(plots.length),
+    lastSavedAt: Number(parsed.lastSavedAt) || now,
+  };
+}
+
+function migrateV2ToV3(parsed: LegacyV2State, now: number): GameState {
+  const plots = parsed.plots as PlotState[];
+  const plotWorkers = workerSlotsForPlotCount(plots.length);
+  if (parsed.hasWorker && plotWorkers.length > 0) {
+    plotWorkers[0] = true;
+  }
+  return {
+    version: 3,
+    gold: Number(parsed.gold) || 0,
+    plots,
+    plotWorkers,
     lastSavedAt: Number(parsed.lastSavedAt) || now,
   };
 }
@@ -46,16 +84,30 @@ export function loadGame(now: number): GameState {
       return createInitialState(now);
     }
     if (parsed.version === 1) {
-      return advanceStateToNow(migrateV1ToV2(parsed as LegacyV1State, now), now);
+      return advanceStateToNow(
+        migrateV1ToV3(parsed as LegacyV1State, now),
+        now,
+      );
     }
-    if (parsed.version !== 2) {
+    if (parsed.version === 2) {
+      return advanceStateToNow(
+        migrateV2ToV3(parsed as LegacyV2State, now),
+        now,
+      );
+    }
+    if (parsed.version !== 3) {
       return createInitialState(now);
     }
+    const plots = parsed.plots as GameState["plots"];
+    const plotWorkers = alignPlotWorkers(
+      plots,
+      parsed.plotWorkers as boolean[] | undefined,
+    );
     const base: GameState = {
-      version: 2,
+      version: 3,
       gold: Number(parsed.gold) || 0,
-      plots: parsed.plots as GameState["plots"],
-      hasWorker: Boolean(parsed.hasWorker),
+      plots,
+      plotWorkers,
       lastSavedAt: Number(parsed.lastSavedAt) || now,
     };
     return advanceStateToNow(base, now);
