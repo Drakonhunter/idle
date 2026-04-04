@@ -78,6 +78,13 @@ export function advanceStateToNow(state: GameState, now: number): GameState {
     }
     return p;
   });
+  const unchanged =
+    gold === state.gold &&
+    plots.length === state.plots.length &&
+    plots.every((pl, i) => pl === state.plots[i]);
+  if (unchanged) {
+    return state;
+  }
   return {
     ...state,
     gold,

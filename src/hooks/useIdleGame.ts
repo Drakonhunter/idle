@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   buyPlot,
+  createInitialState,
   harvestPlot,
   hireWorkerForPlot,
   selectCropForPlot,
   advanceStateToNow,
 } from "@/lib/game/state";
-import { loadGame, saveGame } from "@/lib/game/persistence";
+import { clearSavedGame, loadGame, saveGame } from "@/lib/game/persistence";
 import type { CropId, GameState } from "@/lib/game/types";
 import { GROW_MS, nextWorkerHireCost, plotPurchaseCost } from "@/lib/game/types";
 
@@ -97,6 +98,13 @@ export function useIdleGame() {
     [setAndPersist],
   );
 
+  const resetKingdom = useCallback(() => {
+    const t = Date.now();
+    clearSavedGame();
+    setNow(t);
+    setState(createInitialState(t));
+  }, []);
+
   const nextPlotCost =
     effectiveState != null
       ? plotPurchaseCost(effectiveState.plots.length)
@@ -127,5 +135,6 @@ export function useIdleGame() {
     nextWorkerCost,
     canBuyPlot,
     canAffordNextWorker,
+    resetKingdom,
   };
 }

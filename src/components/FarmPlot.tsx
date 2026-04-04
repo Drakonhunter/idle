@@ -196,7 +196,9 @@ export function FarmPlot({
                 <span className={styles.barTrack}>
                   <span
                     className={styles.barFill}
-                    style={{ width: `${growProgress}%` }}
+                    style={{
+                      transform: `scaleX(${Math.max(0, growProgress / 100)})`,
+                    }}
                   />
                 </span>
               </div>
@@ -213,7 +215,9 @@ export function FarmPlot({
                 <span className={styles.barTrack}>
                   <span
                     className={styles.barFillWorker}
-                    style={{ width: `${workerHarvestProgress}%` }}
+                    style={{
+                      transform: `scaleX(${Math.max(0, workerHarvestProgress / 100)})`,
+                    }}
                   />
                 </span>
               </div>

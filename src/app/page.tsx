@@ -17,6 +17,7 @@ export default function Home() {
     nextWorkerCost,
     canBuyPlot,
     canAffordNextWorker,
+    resetKingdom,
   } = useIdleGame();
 
   if (!state) {
@@ -92,6 +93,24 @@ export default function Home() {
               disabled={!canBuyPlot}
             >
               Buy field ({nextPlotCost} gold)
+            </button>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnDanger}`}
+              onClick={() => {
+                if (
+                  typeof window !== "undefined" &&
+                  !window.confirm(
+                    "Reset the kingdom? This clears saved progress in this browser.",
+                  )
+                ) {
+                  return;
+                }
+                resetKingdom();
+              }}
+              title="Clear save and start fresh (for testing)"
+            >
+              Reset kingdom
             </button>
           </div>
         </div>

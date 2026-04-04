@@ -120,6 +120,11 @@
   background: linear-gradient(180deg, #c8f0ff, #8fd4f0);
 }
 
+.btnDanger {
+  background: linear-gradient(180deg, #ffcdd2, #e57373);
+  font-size: 0.85rem;
+}
+
 .roadmap {
   margin-top: 1.25rem;
   padding-top: 1rem;

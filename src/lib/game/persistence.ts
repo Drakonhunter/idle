@@ -230,3 +230,13 @@ export function saveGame(state: GameState): void {
     /* quota or private mode */
   }
 }
+
+/** Clears persisted save (e.g. dev reset). */
+export function clearSavedGame(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(SAVE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
