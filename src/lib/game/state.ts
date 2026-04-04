@@ -1,13 +1,13 @@
 import {
+  type CropId,
   type GameState,
   type PlotState,
   GROW_MS,
-  HARVEST_GOLD,
-  HARVEST_SEED_REFUND,
-  PLANT_SEED_COST,
+  MANUAL_HARVEST_GOLD,
+  WORKER_HARVEST_GOLD,
+  WORKER_HIRE_COST,
   STARTING_GOLD,
   STARTING_PLOT_COUNT,
-  STARTING_SEEDS,
 } from "./types";
 
 function freshPlots(count: number): PlotState[] {
@@ -16,27 +16,47 @@ function freshPlots(count: number): PlotState[] {
 
 export function createInitialState(now: number): GameState {
   return {
-    version: 1,
+    version: 2,
     gold: STARTING_GOLD,
-    seeds: STARTING_SEEDS,
     plots: freshPlots(STARTING_PLOT_COUNT),
+    hasWorker: false,
     lastSavedAt: now,
-    lastFieldWorkAt: 0,
   };
 }
 
-function advancePlot(plot: PlotState, now: number): PlotState {
+function advanceGrowing(plot: PlotState, now: number): PlotState {
   if (plot.kind !== "growing") return plot;
   if (now >= plot.plantedAt + GROW_MS) {
-    return { kind: "ready", ripenedAt: plot.plantedAt + GROW_MS };
+    return {
+      kind: "ready",
+      crop: plot.crop,
+      ripenedAt: plot.plantedAt + GROW_MS,
+    };
   }
   return plot;
 }
 
+/**
+ * Worker completes harvest GROW_MS after the crop becomes ripe; manual harvest is instant.
+ */
 export function advanceStateToNow(state: GameState, now: number): GameState {
+  let gold = state.gold;
+  const plots = state.plots.map((plot) => {
+    const p = advanceGrowing(plot, now);
+    if (
+      p.kind === "ready" &&
+      state.hasWorker &&
+      now >= p.ripenedAt + GROW_MS
+    ) {
+      gold += WORKER_HARVEST_GOLD;
+      return { kind: "empty" as const };
+    }
+    return p;
+  });
   return {
     ...state,
-    plots: state.plots.map((p) => advancePlot(p, now)),
+    gold,
+    plots,
     lastSavedAt: now,
   };
 }
@@ -44,17 +64,16 @@ export function advanceStateToNow(state: GameState, now: number): GameState {
 export function plantInPlot(
   state: GameState,
   plotIndex: number,
+  crop: CropId,
   now: number,
 ): GameState | null {
   const plot = state.plots[plotIndex];
   if (!plot || plot.kind !== "empty") return null;
-  if (state.seeds < PLANT_SEED_COST) return null;
   const nextPlots = [...state.plots];
-  nextPlots[plotIndex] = { kind: "growing", plantedAt: now };
+  nextPlots[plotIndex] = { kind: "growing", crop, plantedAt: now };
   return advanceStateToNow(
     {
       ...state,
-      seeds: state.seeds - PLANT_SEED_COST,
       plots: nextPlots,
       lastSavedAt: now,
     },
@@ -73,39 +92,22 @@ export function harvestPlot(
   nextPlots[plotIndex] = { kind: "empty" };
   return {
     ...state,
-    gold: state.gold + HARVEST_GOLD,
-    seeds: state.seeds + HARVEST_SEED_REFUND,
+    gold: state.gold + MANUAL_HARVEST_GOLD,
     plots: nextPlots,
     lastSavedAt: now,
   };
 }
 
-export function buyPlot(
-  state: GameState,
-  now: number,
-  cost: number,
-): GameState | null {
-  if (state.gold < cost) return null;
-  return {
-    ...state,
-    gold: state.gold - cost,
-    plots: [...state.plots, { kind: "empty" }],
-    lastSavedAt: now,
-  };
-}
-
-/** Small active-play bonus: instant gold, long cooldown. */
-export function fieldWorkDrip(
-  state: GameState,
-  now: number,
-  cooldownMs: number,
-  bonusGold: number,
-): GameState | null {
-  if (now - state.lastFieldWorkAt < cooldownMs) return null;
-  return {
-    ...state,
-    gold: state.gold + bonusGold,
-    lastSavedAt: now,
-    lastFieldWorkAt: now,
-  };
+export function hireWorker(state: GameState, now: number): GameState | null {
+  if (state.hasWorker) return null;
+  if (state.gold < WORKER_HIRE_COST) return null;
+  return advanceStateToNow(
+    {
+      ...state,
+      gold: state.gold - WORKER_HIRE_COST,
+      hasWorker: true,
+      lastSavedAt: now,
+    },
+    now,
+  );
 }

@@ -2,36 +2,32 @@
 
 import { FarmPlot } from "@/components/FarmPlot";
 import { useIdleGame } from "@/hooks/useIdleGame";
-import { PLANT_SEED_COST } from "@/lib/game/types";
+import { MANUAL_HARVEST_GOLD, WORKER_HARVEST_GOLD } from "@/lib/game/types";
 import styles from "./page.module.css";
 
 export default function Home() {
   const {
     state,
     now,
-    plant,
+    plantCrop,
     harvest,
-    buyNextPlot,
-    nextPlotCost,
-    fieldWork,
-    fieldWorkReady,
-    fieldWorkCooldownMs,
+    hireFarmWorker,
+    canHireWorker,
+    workerHireCost,
   } = useIdleGame();
 
   if (!state) {
     return <p className={styles.loading}>Loading your tiny kingdom…</p>;
   }
 
-  const canPlant = state.seeds >= PLANT_SEED_COST;
-  const canBuyPlot = state.gold >= nextPlotCost;
-
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>Tiny Kingdom Idle</h1>
         <p className={styles.tagline}>
-          Farm gold &amp; seeds — play in bursts or let crops grow while you
-          wander off.
+          Tap to harvest for {MANUAL_HARVEST_GOLD} gold per crop, or hire a
+          worker for {WORKER_HARVEST_GOLD} gold while you are away — active play
+          pays better for now.
         </p>
       </header>
 
@@ -41,10 +37,12 @@ export default function Home() {
             <span aria-hidden>🪙</span>
             <span>{Math.floor(state.gold)} gold</span>
           </span>
-          <span className={`${styles.pill} ${styles.pillSeed}`}>
-            <span aria-hidden>🌾</span>
-            <span>{state.seeds} seeds</span>
-          </span>
+          {state.hasWorker && (
+            <span className={`${styles.pill} ${styles.pillWorker}`}>
+              <span aria-hidden>🧑‍🌾</span>
+              <span>Worker hired</span>
+            </span>
+          )}
         </div>
 
         <h2 className={styles.sectionTitle}>Your farm</h2>
@@ -55,8 +53,8 @@ export default function Home() {
               plotIndex={i}
               plot={plot}
               now={now}
-              canPlant={canPlant}
-              onPlant={plant}
+              hasWorker={state.hasWorker}
+              onPlantCrop={plantCrop}
               onHarvest={harvest}
             />
           ))}
@@ -64,23 +62,17 @@ export default function Home() {
 
         <div className={styles.actions}>
           <div className={styles.btnRow}>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              onClick={buyNextPlot}
-              disabled={!canBuyPlot}
-            >
-              Buy field ({nextPlotCost} gold)
-            </button>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnSecondary}`}
-              onClick={fieldWork}
-              disabled={!fieldWorkReady}
-              title={`Bonus gold every ${fieldWorkCooldownMs / 1000}s while active`}
-            >
-              Field work (+1 gold)
-            </button>
+            {!state.hasWorker && (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={hireFarmWorker}
+                disabled={!canHireWorker}
+                title={`Auto-harvests ripe crops after the same time they took to grow (${WORKER_HARVEST_GOLD} gold each)`}
+              >
+                Hire worker ({workerHireCost} gold)
+              </button>
+            )}
           </div>
         </div>
 

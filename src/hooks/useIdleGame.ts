@@ -2,20 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  buyPlot,
-  fieldWorkDrip,
   harvestPlot,
   plantInPlot,
   advanceStateToNow,
+  hireWorker,
 } from "@/lib/game/state";
 import { loadGame, saveGame } from "@/lib/game/persistence";
-import type { GameState } from "@/lib/game/types";
-import { GROW_MS, plotPurchaseCost } from "@/lib/game/types";
+import type { CropId, GameState } from "@/lib/game/types";
+import { GROW_MS, WORKER_HIRE_COST } from "@/lib/game/types";
 
 const TICK_MS = 500;
 const SAVE_DEBOUNCE_MS = 400;
-const FIELD_WORK_COOLDOWN_MS = 2_500;
-const FIELD_WORK_BONUS = 1;
 
 export function useIdleGame() {
   const [state, setState] = useState<GameState | null>(null);
@@ -61,11 +58,11 @@ export function useIdleGame() {
     });
   }, []);
 
-  const plant = useCallback(
-    (plotIndex: number) => {
+  const plantCrop = useCallback(
+    (plotIndex: number, crop: CropId) => {
       setAndPersist((s) => {
         const t = Date.now();
-        return plantInPlot(s, plotIndex, t) ?? s;
+        return plantInPlot(s, plotIndex, crop, t) ?? s;
       });
     },
     [setAndPersist],
@@ -81,52 +78,26 @@ export function useIdleGame() {
     [setAndPersist],
   );
 
-  const buyNextPlot = useCallback(() => {
+  const hireFarmWorker = useCallback(() => {
     setAndPersist((s) => {
       const t = Date.now();
-      const cost = plotPurchaseCost(s.plots.length);
-      return buyPlot(s, t, cost) ?? s;
+      return hireWorker(s, t) ?? s;
     });
   }, [setAndPersist]);
 
-  const fieldWork = useCallback(() => {
-    const t = Date.now();
-    setState((s) => {
-      if (!s) return s;
-      const current = advanceStateToNow(s, t);
-      return (
-        fieldWorkDrip(
-          current,
-          t,
-          FIELD_WORK_COOLDOWN_MS,
-          FIELD_WORK_BONUS,
-        ) ?? current
-      );
-    });
-    setNow(t);
-  }, []);
-
-  const nextPlotCost =
-    effectiveState != null
-      ? plotPurchaseCost(effectiveState.plots.length)
-      : 0;
-
-  const fieldWorkReady =
+  const canHireWorker =
     effectiveState != null &&
-    now > 0 &&
-    (effectiveState.lastFieldWorkAt === 0 ||
-      now - effectiveState.lastFieldWorkAt >= FIELD_WORK_COOLDOWN_MS);
+    !effectiveState.hasWorker &&
+    effectiveState.gold >= WORKER_HIRE_COST;
 
   return {
     state: effectiveState,
     now,
     growMs: GROW_MS,
-    plant,
+    plantCrop,
     harvest,
-    buyNextPlot,
-    nextPlotCost,
-    fieldWork,
-    fieldWorkReady,
-    fieldWorkCooldownMs: FIELD_WORK_COOLDOWN_MS,
+    hireFarmWorker,
+    canHireWorker,
+    workerHireCost: WORKER_HIRE_COST,
   };
 }
