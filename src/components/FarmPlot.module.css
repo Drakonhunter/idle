@@ -165,6 +165,14 @@
   letter-spacing: 0.02em;
 }
 
+.workerHarvestHint {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.88;
+}
+
 .hintMuted {
   font-size: 0.58rem;
   font-weight: 700;

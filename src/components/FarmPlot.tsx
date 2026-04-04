@@ -26,13 +26,8 @@ function mainEmoji(plot: PlotState, selectedCrop: CropId | null): string {
   return "🟫";
 }
 
-function statusLabel(
-  plot: PlotState,
-  hasWorker: boolean,
-  selectedCrop: CropId | null,
-): string {
+function statusLabel(plot: PlotState, selectedCrop: CropId | null): string {
   if (plot.kind === "growing") return "Growing";
-  if (plot.kind === "ready" && hasWorker) return "Hand harvesting";
   if (plot.kind === "ready") return "Click to harvest!";
   if (selectedCrop == null) return "Fallow";
   return "";
@@ -68,7 +63,7 @@ export function FarmPlot({
   const ready = plot.kind === "ready";
   const fallow = plot.kind === "empty";
   const emoji = mainEmoji(plot, selectedCrop);
-  const status = statusLabel(plot, hasWorker, selectedCrop);
+  const status = statusLabel(plot, selectedCrop);
 
   const growProgress = growing
     ? Math.min(100, Math.max(0, ((now - plot.plantedAt) / GROW_MS) * 100))
@@ -176,7 +171,9 @@ export function FarmPlot({
           onClick={handleHarvest}
           disabled={!ready}
           aria-label={
-            ready ? "Harvest crop for bonus gold" : "Crop growing or harvesting"
+            ready
+              ? "Click to harvest for bonus gold"
+              : "Crop growing"
           }
         >
           <span className={styles.inner}>
@@ -184,6 +181,9 @@ export function FarmPlot({
               {emoji}
             </span>
             <span className={styles.statusLine}>{status}</span>
+            {ready && hasWorker && (
+              <span className={styles.workerHarvestHint}>Worker harvesting</span>
+            )}
             {growing && (
               <div
                 className={styles.progressBlock}
@@ -210,7 +210,7 @@ export function FarmPlot({
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round(workerHarvestProgress)}
-                aria-label="Field hand harvest progress"
+                aria-label="Worker harvest progress"
               >
                 <span className={styles.barTrack}>
                   <span
