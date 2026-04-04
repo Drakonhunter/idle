@@ -9,6 +9,8 @@ export type GameState = {
   seeds: number;
   plots: PlotState[];
   lastSavedAt: number;
+  /** Last time "field work" active bonus was used (ms since epoch). */
+  lastFieldWorkAt: number;
 };
 
 export const SAVE_KEY = "tiny-kingdom-idle-v1";

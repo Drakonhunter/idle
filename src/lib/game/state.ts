@@ -21,6 +21,7 @@ export function createInitialState(now: number): GameState {
     seeds: STARTING_SEEDS,
     plots: freshPlots(STARTING_PLOT_COUNT),
     lastSavedAt: now,
+    lastFieldWorkAt: 0,
   };
 }
 
@@ -97,13 +98,14 @@ export function buyPlot(
 export function fieldWorkDrip(
   state: GameState,
   now: number,
-  lastWorkAt: number,
   cooldownMs: number,
   bonusGold: number,
-): { state: GameState; nextLastWorkAt: number } | null {
-  if (now - lastWorkAt < cooldownMs) return null;
+): GameState | null {
+  if (now - state.lastFieldWorkAt < cooldownMs) return null;
   return {
-    state: { ...state, gold: state.gold + bonusGold, lastSavedAt: now },
-    nextLastWorkAt: now,
+    ...state,
+    gold: state.gold + bonusGold,
+    lastSavedAt: now,
+    lastFieldWorkAt: now,
   };
 }

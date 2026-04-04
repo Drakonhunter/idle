@@ -19,6 +19,9 @@ export function loadGame(now: number): GameState {
         : STARTING_SEEDS,
       plots: parsed.plots as GameState["plots"],
       lastSavedAt: Number(parsed.lastSavedAt) || now,
+      lastFieldWorkAt: Number.isFinite(Number(parsed.lastFieldWorkAt))
+        ? Number(parsed.lastFieldWorkAt)
+        : 0,
     };
     return advanceStateToNow(base, now);
   } catch {

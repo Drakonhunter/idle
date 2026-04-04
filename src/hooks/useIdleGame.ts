@@ -20,13 +20,14 @@ const FIELD_WORK_BONUS = 1;
 export function useIdleGame() {
   const [state, setState] = useState<GameState | null>(null);
   const [now, setNow] = useState(0);
-  const lastFieldWorkRef = useRef(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const t = Date.now();
-    setNow(t);
-    setState(loadGame(t));
+    queueMicrotask(() => {
+      setNow(t);
+      setState(loadGame(t));
+    });
   }, []);
 
   useEffect(() => {
@@ -35,9 +36,10 @@ export function useIdleGame() {
     return () => clearInterval(id);
   }, [state]);
 
-  const effectiveState = state
-    ? advanceStateToNow(state, now || Date.now())
-    : null;
+  const effectiveState =
+    state != null
+      ? advanceStateToNow(state, now > 0 ? now : state.lastSavedAt)
+      : null;
 
   useEffect(() => {
     if (!effectiveState) return;
@@ -92,16 +94,14 @@ export function useIdleGame() {
     setState((s) => {
       if (!s) return s;
       const current = advanceStateToNow(s, t);
-      const result = fieldWorkDrip(
-        current,
-        t,
-        lastFieldWorkRef.current,
-        FIELD_WORK_COOLDOWN_MS,
-        FIELD_WORK_BONUS,
+      return (
+        fieldWorkDrip(
+          current,
+          t,
+          FIELD_WORK_COOLDOWN_MS,
+          FIELD_WORK_BONUS,
+        ) ?? current
       );
-      if (!result) return current;
-      lastFieldWorkRef.current = result.nextLastWorkAt;
-      return result.state;
     });
     setNow(t);
   }, []);
@@ -112,9 +112,10 @@ export function useIdleGame() {
       : 0;
 
   const fieldWorkReady =
+    effectiveState != null &&
     now > 0 &&
-    (lastFieldWorkRef.current === 0 ||
-      now - lastFieldWorkRef.current >= FIELD_WORK_COOLDOWN_MS);
+    (effectiveState.lastFieldWorkAt === 0 ||
+      now - effectiveState.lastFieldWorkAt >= FIELD_WORK_COOLDOWN_MS);
 
   return {
     state: effectiveState,
