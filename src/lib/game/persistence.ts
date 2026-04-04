@@ -1,8 +1,8 @@
 import type { CropId, GameState, PlotState } from "./types";
-import { DEFAULT_PLOT_CROP, SAVE_KEY } from "./types";
+import { SAVE_KEY } from "./types";
 import { advanceStateToNow, createInitialState } from "./state";
 
-const CURRENT_SAVE_VERSION = 4 as const;
+const CURRENT_SAVE_VERSION = 5 as const;
 
 type LegacyV1Plot =
   | { kind: "empty" }
@@ -34,6 +34,15 @@ type LegacyV3State = {
   lastSavedAt: number;
 };
 
+type LegacyV4State = {
+  version: 4;
+  gold: number;
+  plots: PlotState[];
+  plotWorkers: boolean[];
+  plotSelectedCrops: CropId[];
+  lastSavedAt: number;
+};
+
 function migratePlotV1(p: LegacyV1Plot): PlotState {
   if (p.kind === "empty") return { kind: "empty" };
   if (p.kind === "growing")
@@ -45,8 +54,8 @@ function workerSlotsForPlotCount(count: number): boolean[] {
   return Array.from({ length: count }, () => false);
 }
 
-function selectedCropsForPlotCount(count: number): CropId[] {
-  return Array.from({ length: count }, () => DEFAULT_PLOT_CROP);
+function selectedCropsForPlotCountV4(count: number): CropId[] {
+  return Array.from({ length: count }, () => "carrot");
 }
 
 function alignPlotWorkers(
@@ -60,14 +69,14 @@ function alignPlotWorkers(
   return next;
 }
 
-function alignSelectedCrops(
+function alignSelectedCropsV5(
   plots: PlotState[],
-  plotSelectedCrops: CropId[] | undefined,
-): CropId[] {
+  plotSelectedCrops: (CropId | null)[] | undefined,
+): (CropId | null)[] {
   const n = plots.length;
   const base = plotSelectedCrops ?? [];
-  const next = base.slice(0, n) as CropId[];
-  while (next.length < n) next.push(DEFAULT_PLOT_CROP);
+  const next = base.slice(0, n) as (CropId | null)[];
+  while (next.length < n) next.push(null);
   return next;
 }
 
@@ -102,7 +111,7 @@ function migrateV2ToV3(parsed: LegacyV2State): LegacyV3State {
 }
 
 /** v3 → v4 */
-function migrateV3ToV4(parsed: LegacyV3State): GameState {
+function migrateV3ToV4(parsed: LegacyV3State): LegacyV4State {
   const plots = parsed.plots;
   const plotWorkers = alignPlotWorkers(plots, parsed.plotWorkers);
   return {
@@ -110,7 +119,27 @@ function migrateV3ToV4(parsed: LegacyV3State): GameState {
     gold: Number(parsed.gold) || 0,
     plots,
     plotWorkers,
-    plotSelectedCrops: selectedCropsForPlotCount(plots.length),
+    plotSelectedCrops: selectedCropsForPlotCountV4(plots.length),
+    lastSavedAt: Number(parsed.lastSavedAt) || 0,
+  };
+}
+
+/** v4 → v5: no default crop; fallow empty plots */
+function migrateV4ToV5(parsed: LegacyV4State): GameState {
+  const plots = parsed.plots;
+  const plotWorkers = alignPlotWorkers(plots, parsed.plotWorkers);
+  const plotSelectedCrops: (CropId | null)[] = plots.map((plot) =>
+    plot.kind === "empty" ? null : plot.crop,
+  );
+  while (plotSelectedCrops.length < plots.length) {
+    plotSelectedCrops.push(null);
+  }
+  return {
+    version: 5,
+    gold: Number(parsed.gold) || 0,
+    plots,
+    plotWorkers,
+    plotSelectedCrops,
     lastSavedAt: Number(parsed.lastSavedAt) || 0,
   };
 }
@@ -142,6 +171,12 @@ function migrateSaveTowardCurrent(
       version = 4;
       continue;
     }
+    if (version === 4) {
+      const next = migrateV4ToV5(data as unknown as LegacyV4State);
+      data = { ...next } as unknown as Record<string, unknown>;
+      version = 5;
+      continue;
+    }
     return null;
   }
 
@@ -153,13 +188,13 @@ function migrateSaveTowardCurrent(
     plots,
     data.plotWorkers as boolean[] | undefined,
   );
-  const plotSelectedCrops = alignSelectedCrops(
+  const plotSelectedCrops = alignSelectedCropsV5(
     plots,
-    data.plotSelectedCrops as CropId[] | undefined,
+    data.plotSelectedCrops as (CropId | null)[] | undefined,
   );
 
   return {
-    version: 4,
+    version: 5,
     gold: Number(data.gold) || 0,
     plots,
     plotWorkers,

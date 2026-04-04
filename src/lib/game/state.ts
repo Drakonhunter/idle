@@ -2,7 +2,6 @@ import {
   type CropId,
   type GameState,
   type PlotState,
-  DEFAULT_PLOT_CROP,
   GROW_MS,
   MANUAL_HARVEST_GOLD,
   WORKER_HARVEST_GOLD,
@@ -19,13 +18,13 @@ function freshWorkerSlots(count: number): boolean[] {
   return Array.from({ length: count }, () => false);
 }
 
-function freshSelectedCrops(count: number): CropId[] {
-  return Array.from({ length: count }, () => DEFAULT_PLOT_CROP);
+function freshSelectedCrops(count: number): (CropId | null)[] {
+  return Array.from({ length: count }, () => null);
 }
 
 export function createInitialState(now: number): GameState {
   return {
-    version: 4,
+    version: 5,
     gold: STARTING_GOLD,
     plots: freshPlots(STARTING_PLOT_COUNT),
     plotWorkers: freshWorkerSlots(STARTING_PLOT_COUNT),
@@ -46,8 +45,8 @@ function advanceGrowing(plot: PlotState, now: number): PlotState {
   return plot;
 }
 
-function cropForPlot(state: GameState, plotIndex: number): CropId {
-  return state.plotSelectedCrops[plotIndex] ?? DEFAULT_PLOT_CROP;
+function cropForPlot(state: GameState, plotIndex: number): CropId | null {
+  return state.plotSelectedCrops[plotIndex] ?? null;
 }
 
 function startGrowing(crop: CropId, now: number): PlotState {
@@ -56,22 +55,26 @@ function startGrowing(crop: CropId, now: number): PlotState {
 
 /**
  * Worker completes harvest GROW_MS after the crop becomes ripe; manual harvest is instant.
- * Empty plots auto-start the plot's selected crop.
+ * Empty plots only grow when the player has assigned a crop.
  */
 export function advanceStateToNow(state: GameState, now: number): GameState {
   let gold = state.gold;
   const plots = state.plots.map((plot, i) => {
-    let p = advanceGrowing(plot, now);
+    const p = advanceGrowing(plot, now);
+    const selected = cropForPlot(state, i);
     if (
       p.kind === "ready" &&
       state.plotWorkers[i] &&
       now >= p.ripenedAt + GROW_MS
     ) {
       gold += WORKER_HARVEST_GOLD;
-      return startGrowing(cropForPlot(state, i), now);
+      if (selected != null) {
+        return startGrowing(selected, now);
+      }
+      return { kind: "empty" as const };
     }
-    if (p.kind === "empty") {
-      return startGrowing(cropForPlot(state, i), now);
+    if (p.kind === "empty" && selected != null) {
+      return startGrowing(selected, now);
     }
     return p;
   });
@@ -90,13 +93,43 @@ export function harvestPlot(
 ): GameState | null {
   const plot = state.plots[plotIndex];
   if (!plot || plot.kind !== "ready") return null;
+  const selected = cropForPlot(state, plotIndex);
   const nextPlots = [...state.plots];
-  nextPlots[plotIndex] = startGrowing(cropForPlot(state, plotIndex), now);
+  nextPlots[plotIndex] =
+    selected != null ? startGrowing(selected, now) : { kind: "empty" };
   return advanceStateToNow(
     {
       ...state,
       gold: state.gold + MANUAL_HARVEST_GOLD,
       plots: nextPlots,
+      lastSavedAt: now,
+    },
+    now,
+  );
+}
+
+export function selectCropForPlot(
+  state: GameState,
+  plotIndex: number,
+  crop: CropId,
+  now: number,
+): GameState {
+  const n = state.plots.length;
+  if (plotIndex < 0 || plotIndex >= n) return state;
+  const plotSelectedCrops = [...state.plotSelectedCrops];
+  while (plotSelectedCrops.length < n) {
+    plotSelectedCrops.push(null);
+  }
+  plotSelectedCrops[plotIndex] = crop;
+  const plots = [...state.plots];
+  if (plots[plotIndex]?.kind === "empty") {
+    plots[plotIndex] = startGrowing(crop, now);
+  }
+  return advanceStateToNow(
+    {
+      ...state,
+      plots,
+      plotSelectedCrops,
       lastSavedAt: now,
     },
     now,
@@ -115,7 +148,7 @@ export function buyPlot(
       gold: state.gold - cost,
       plots: [...state.plots, { kind: "empty" as const }],
       plotWorkers: [...state.plotWorkers, false],
-      plotSelectedCrops: [...state.plotSelectedCrops, DEFAULT_PLOT_CROP],
+      plotSelectedCrops: [...state.plotSelectedCrops, null],
       lastSavedAt: now,
     },
     now,
@@ -130,7 +163,7 @@ export function hireWorkerForPlot(
   if (plotIndex < 0 || plotIndex >= state.plotWorkers.length) return null;
   if (state.plotWorkers[plotIndex]) return null;
   const cost = nextWorkerHireCost(state.plotWorkers);
-  if (state.gold < cost) return null;
+  if (cost == null || state.gold < cost) return null;
   const nextWorkers = [...state.plotWorkers];
   nextWorkers[plotIndex] = true;
   return advanceStateToNow(

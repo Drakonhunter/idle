@@ -17,25 +17,29 @@
   padding: 0.2rem 0.25rem 0;
 }
 
+.cornerWrap {
+  position: relative;
+  pointer-events: auto;
+}
+
 .cornerBtn,
 .workerBadge {
-  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 1.65rem;
   min-height: 1.65rem;
   border-radius: 10px;
-  border: 2px solid rgba(62, 48, 36, 0.35);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 2px 0 rgba(62, 48, 36, 0.2);
+  border: 2px solid rgba(62, 48, 36, 0.45);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 0 rgba(62, 48, 36, 0.22);
 }
 
 .cornerBtn {
   padding: 0.1rem 0.2rem;
   font: inherit;
   cursor: pointer;
-  gap: 0.05rem;
+  pointer-events: auto;
 }
 
 .cornerBtn:disabled {
@@ -62,9 +66,40 @@
 }
 
 .workerBadge {
+  pointer-events: auto;
   font-size: 0.95rem;
   line-height: 1;
   padding: 0.15rem;
+}
+
+.cropMenu {
+  position: absolute;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  min-width: 7rem;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 2px solid var(--panel-border);
+  background: #fff;
+  box-shadow: 0 6px 16px var(--shadow);
+  z-index: 5;
+}
+
+.cropMenuItem {
+  width: 100%;
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(180deg, #fff9e6, #ffe8a3);
+  box-shadow: 0 2px 0 var(--panel-border);
+}
+
+.cropMenuItem:active {
+  transform: translateY(1px);
 }
 
 .plot {
@@ -84,6 +119,11 @@
   padding: 1.85rem 0.35rem 0.45rem;
   font: inherit;
   color: inherit;
+}
+
+.plotFallow {
+  cursor: default;
+  background: linear-gradient(180deg, #c4b09a 0%, #9a7f65 55%, #7d654e 100%);
 }
 
 .plot:active:not(:disabled) {
@@ -109,33 +149,62 @@
   width: 100%;
 }
 
+.plotFallow .inner {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
 .emoji {
   font-size: 1.85rem;
   line-height: 1;
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.12));
 }
 
-.barWrap {
-  width: 78%;
-  height: 8px;
+.statusLine {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.hintMuted {
+  font-size: 0.58rem;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.progressBlock {
+  width: 88%;
+  margin-top: 0.15rem;
+}
+
+.barTrack {
+  display: block;
+  width: 100%;
+  height: 10px;
   border-radius: 99px;
-  background: rgba(0, 0, 0, 0.12);
+  border: 2px solid rgba(62, 48, 36, 0.28);
+  background: rgba(0, 0, 0, 0.18);
   overflow: hidden;
-  margin-top: 0.05rem;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-.bar {
+.barFill {
+  display: block;
   height: 100%;
+  min-width: 0;
   border-radius: 99px;
-  background: linear-gradient(90deg, #ffd54f, #ff8a65);
-  transition: width 0.2s linear;
+  background: linear-gradient(180deg, #ffe082 0%, #ff8a65 100%);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  transition: width 0.15s linear;
 }
 
-.barWorker {
+.barFillWorker {
+  display: block;
   height: 100%;
+  min-width: 0;
   border-radius: 99px;
-  background: linear-gradient(90deg, #90caf9, #5c6bc0);
-  transition: width 0.2s linear;
+  background: linear-gradient(180deg, #b3e5fc 0%, #5c6bc0 100%);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  transition: width 0.15s linear;
 }
 
 .readyPulse {

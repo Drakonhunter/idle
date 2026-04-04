@@ -10,6 +10,7 @@ export default function Home() {
     state,
     now,
     harvest,
+    pickCropForPlot,
     buyNextPlot,
     hireWorkerOnPlot,
     nextPlotCost,
@@ -29,9 +30,9 @@ export default function Home() {
       <header className={styles.header}>
         <h1 className={styles.title}>Tiny Kingdom Idle</h1>
         <p className={styles.tagline}>
-          Each field remembers its crop — tap to harvest for{" "}
-          {MANUAL_HARVEST_GOLD} gold, or tap the + icon to hire a hand for{" "}
-          {WORKER_HARVEST_GOLD} gold per auto harvest (pricier each hire).
+          Open ⋯ on a field to plant. Tap when ready for {MANUAL_HARVEST_GOLD}{" "}
+          gold, or + to hire the next hand ({WORKER_HARVEST_GOLD}g per auto
+          harvest once ripe).
         </p>
       </header>
 
@@ -41,14 +42,26 @@ export default function Home() {
             <span aria-hidden>🪙</span>
             <span>{Math.floor(state.gold)} gold</span>
           </span>
-          {hiredHands > 0 && (
+          {nextWorkerCost != null ? (
+            <span
+              className={`${styles.pill} ${styles.pillWorker}`}
+              title={
+                hiredHands > 0
+                  ? `${hiredHands} field hand${hiredHands === 1 ? "" : "s"} hired`
+                  : undefined
+              }
+            >
+              <span aria-hidden>🧑‍🌾</span>
+              <span>Next hand: {nextWorkerCost}g</span>
+            </span>
+          ) : hiredHands > 0 ? (
             <span className={`${styles.pill} ${styles.pillWorker}`}>
               <span aria-hidden>🧑‍🌾</span>
               <span>
-                {hiredHands} field hand{hiredHands === 1 ? "" : "s"}
+                {hiredHands} hand{hiredHands === 1 ? "" : "s"} · full staff
               </span>
             </span>
-          )}
+          ) : null}
         </div>
 
         <h2 className={styles.sectionTitle}>Your farm</h2>
@@ -59,12 +72,13 @@ export default function Home() {
               plotIndex={i}
               plot={plot}
               now={now}
-              selectedCrop={state.plotSelectedCrops[i] ?? "carrot"}
+              selectedCrop={state.plotSelectedCrops[i] ?? null}
               hasWorker={state.plotWorkers[i] ?? false}
               workerHireCost={nextWorkerCost}
               canAffordWorker={canAffordNextWorker}
               onHarvest={harvest}
               onHireWorker={hireWorkerOnPlot}
+              onPickCrop={pickCropForPlot}
             />
           ))}
         </div>

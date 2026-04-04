@@ -6,13 +6,15 @@ export type PlotState =
   | { kind: "ready"; crop: CropId; ripenedAt: number };
 
 export type GameState = {
-  version: 4;
+  version: 5;
   gold: number;
   plots: PlotState[];
   /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */
   plotWorkers: boolean[];
-  /** Crop this plot will grow (auto-replant after harvest). */
-  plotSelectedCrops: CropId[];
+  /**
+   * Crop assigned to this plot; replants after harvest. `null` = fallow until player picks.
+   */
+  plotSelectedCrops: (CropId | null)[];
   lastSavedAt: number;
 };
 
@@ -23,7 +25,6 @@ export const MANUAL_HARVEST_GOLD = 8;
 export const WORKER_HARVEST_GOLD = 4;
 export const STARTING_GOLD = 0;
 export const STARTING_PLOT_COUNT = 1;
-export const DEFAULT_PLOT_CROP: CropId = "carrot";
 
 /** Gold to buy the next plot: 10 for 2nd, 50 for 3rd, then rising. */
 export function plotPurchaseCost(currentPlotCount: number): number {
@@ -37,7 +38,9 @@ export function plotPurchaseCost(currentPlotCount: number): number {
  * Cost to hire a worker on a plot that does not have one yet.
  * Price is based on how many workers are already employed (any field).
  */
-export function nextWorkerHireCost(plotWorkers: boolean[]): number {
+export function nextWorkerHireCost(plotWorkers: boolean[]): number | null {
+  if (plotWorkers.length === 0) return null;
+  if (!plotWorkers.includes(false)) return null;
   const hired = plotWorkers.filter(Boolean).length;
   const tiers = [50, 400, 2800, 18_000, 115_000];
   if (hired < tiers.length) return tiers[hired];

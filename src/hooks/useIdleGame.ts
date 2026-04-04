@@ -5,10 +5,11 @@ import {
   buyPlot,
   harvestPlot,
   hireWorkerForPlot,
+  selectCropForPlot,
   advanceStateToNow,
 } from "@/lib/game/state";
 import { loadGame, saveGame } from "@/lib/game/persistence";
-import type { GameState } from "@/lib/game/types";
+import type { CropId, GameState } from "@/lib/game/types";
 import { GROW_MS, nextWorkerHireCost, plotPurchaseCost } from "@/lib/game/types";
 
 const TICK_MS = 500;
@@ -68,6 +69,16 @@ export function useIdleGame() {
     [setAndPersist],
   );
 
+  const pickCropForPlot = useCallback(
+    (plotIndex: number, crop: CropId) => {
+      setAndPersist((s) => {
+        const t = Date.now();
+        return selectCropForPlot(s, plotIndex, crop, t);
+      });
+    },
+    [setAndPersist],
+  );
+
   const buyNextPlot = useCallback(() => {
     setAndPersist((s) => {
       const t = Date.now();
@@ -94,19 +105,22 @@ export function useIdleGame() {
   const nextWorkerCost =
     effectiveState != null
       ? nextWorkerHireCost(effectiveState.plotWorkers)
-      : 0;
+      : null;
 
   const canBuyPlot =
     effectiveState != null && effectiveState.gold >= nextPlotCost;
 
   const canAffordNextWorker =
-    effectiveState != null && effectiveState.gold >= nextWorkerCost;
+    effectiveState != null &&
+    nextWorkerCost != null &&
+    effectiveState.gold >= nextWorkerCost;
 
   return {
     state: effectiveState,
     now,
     growMs: GROW_MS,
     harvest,
+    pickCropForPlot,
     buyNextPlot,
     hireWorkerOnPlot,
     nextPlotCost,
