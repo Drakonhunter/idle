@@ -2,6 +2,7 @@ import {
   type CropId,
   type GameState,
   type PlotState,
+  DEFAULT_PLOT_CROP,
   GROW_MS,
   MANUAL_HARVEST_GOLD,
   WORKER_HARVEST_GOLD,
@@ -18,12 +19,17 @@ function freshWorkerSlots(count: number): boolean[] {
   return Array.from({ length: count }, () => false);
 }
 
+function freshSelectedCrops(count: number): CropId[] {
+  return Array.from({ length: count }, () => DEFAULT_PLOT_CROP);
+}
+
 export function createInitialState(now: number): GameState {
   return {
-    version: 3,
+    version: 4,
     gold: STARTING_GOLD,
     plots: freshPlots(STARTING_PLOT_COUNT),
     plotWorkers: freshWorkerSlots(STARTING_PLOT_COUNT),
+    plotSelectedCrops: freshSelectedCrops(STARTING_PLOT_COUNT),
     lastSavedAt: now,
   };
 }
@@ -40,20 +46,32 @@ function advanceGrowing(plot: PlotState, now: number): PlotState {
   return plot;
 }
 
+function cropForPlot(state: GameState, plotIndex: number): CropId {
+  return state.plotSelectedCrops[plotIndex] ?? DEFAULT_PLOT_CROP;
+}
+
+function startGrowing(crop: CropId, now: number): PlotState {
+  return { kind: "growing", crop, plantedAt: now };
+}
+
 /**
  * Worker completes harvest GROW_MS after the crop becomes ripe; manual harvest is instant.
+ * Empty plots auto-start the plot's selected crop.
  */
 export function advanceStateToNow(state: GameState, now: number): GameState {
   let gold = state.gold;
   const plots = state.plots.map((plot, i) => {
-    const p = advanceGrowing(plot, now);
+    let p = advanceGrowing(plot, now);
     if (
       p.kind === "ready" &&
       state.plotWorkers[i] &&
       now >= p.ripenedAt + GROW_MS
     ) {
       gold += WORKER_HARVEST_GOLD;
-      return { kind: "empty" as const };
+      return startGrowing(cropForPlot(state, i), now);
+    }
+    if (p.kind === "empty") {
+      return startGrowing(cropForPlot(state, i), now);
     }
     return p;
   });
@@ -65,26 +83,6 @@ export function advanceStateToNow(state: GameState, now: number): GameState {
   };
 }
 
-export function plantInPlot(
-  state: GameState,
-  plotIndex: number,
-  crop: CropId,
-  now: number,
-): GameState | null {
-  const plot = state.plots[plotIndex];
-  if (!plot || plot.kind !== "empty") return null;
-  const nextPlots = [...state.plots];
-  nextPlots[plotIndex] = { kind: "growing", crop, plantedAt: now };
-  return advanceStateToNow(
-    {
-      ...state,
-      plots: nextPlots,
-      lastSavedAt: now,
-    },
-    now,
-  );
-}
-
 export function harvestPlot(
   state: GameState,
   plotIndex: number,
@@ -93,13 +91,16 @@ export function harvestPlot(
   const plot = state.plots[plotIndex];
   if (!plot || plot.kind !== "ready") return null;
   const nextPlots = [...state.plots];
-  nextPlots[plotIndex] = { kind: "empty" };
-  return {
-    ...state,
-    gold: state.gold + MANUAL_HARVEST_GOLD,
-    plots: nextPlots,
-    lastSavedAt: now,
-  };
+  nextPlots[plotIndex] = startGrowing(cropForPlot(state, plotIndex), now);
+  return advanceStateToNow(
+    {
+      ...state,
+      gold: state.gold + MANUAL_HARVEST_GOLD,
+      plots: nextPlots,
+      lastSavedAt: now,
+    },
+    now,
+  );
 }
 
 export function buyPlot(
@@ -114,6 +115,7 @@ export function buyPlot(
       gold: state.gold - cost,
       plots: [...state.plots, { kind: "empty" as const }],
       plotWorkers: [...state.plotWorkers, false],
+      plotSelectedCrops: [...state.plotSelectedCrops, DEFAULT_PLOT_CROP],
       lastSavedAt: now,
     },
     now,

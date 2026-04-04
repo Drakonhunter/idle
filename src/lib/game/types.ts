@@ -6,11 +6,13 @@ export type PlotState =
   | { kind: "ready"; crop: CropId; ripenedAt: number };
 
 export type GameState = {
-  version: 3;
+  version: 4;
   gold: number;
   plots: PlotState[];
   /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */
   plotWorkers: boolean[];
+  /** Crop this plot will grow (auto-replant after harvest). */
+  plotSelectedCrops: CropId[];
   lastSavedAt: number;
 };
 
@@ -21,6 +23,7 @@ export const MANUAL_HARVEST_GOLD = 8;
 export const WORKER_HARVEST_GOLD = 4;
 export const STARTING_GOLD = 0;
 export const STARTING_PLOT_COUNT = 1;
+export const DEFAULT_PLOT_CROP: CropId = "carrot";
 
 /** Gold to buy the next plot: 10 for 2nd, 50 for 3rd, then rising. */
 export function plotPurchaseCost(currentPlotCount: number): number {
@@ -41,4 +44,9 @@ export function nextWorkerHireCost(plotWorkers: boolean[]): number {
   return Math.floor(
     tiers[tiers.length - 1] * Math.pow(5.2, hired - tiers.length + 1),
   );
+}
+
+export function cropEmoji(crop: CropId): string {
+  if (crop === "carrot") return "🥕";
+  return "🌱";
 }

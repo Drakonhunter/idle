@@ -5,11 +5,10 @@ import {
   buyPlot,
   harvestPlot,
   hireWorkerForPlot,
-  plantInPlot,
   advanceStateToNow,
 } from "@/lib/game/state";
 import { loadGame, saveGame } from "@/lib/game/persistence";
-import type { CropId, GameState } from "@/lib/game/types";
+import type { GameState } from "@/lib/game/types";
 import { GROW_MS, nextWorkerHireCost, plotPurchaseCost } from "@/lib/game/types";
 
 const TICK_MS = 500;
@@ -59,16 +58,6 @@ export function useIdleGame() {
     });
   }, []);
 
-  const plantCrop = useCallback(
-    (plotIndex: number, crop: CropId) => {
-      setAndPersist((s) => {
-        const t = Date.now();
-        return plantInPlot(s, plotIndex, crop, t) ?? s;
-      });
-    },
-    [setAndPersist],
-  );
-
   const harvest = useCallback(
     (plotIndex: number) => {
       setAndPersist((s) => {
@@ -117,7 +106,6 @@ export function useIdleGame() {
     state: effectiveState,
     now,
     growMs: GROW_MS,
-    plantCrop,
     harvest,
     buyNextPlot,
     hireWorkerOnPlot,

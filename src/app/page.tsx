@@ -9,7 +9,6 @@ export default function Home() {
   const {
     state,
     now,
-    plantCrop,
     harvest,
     buyNextPlot,
     hireWorkerOnPlot,
@@ -30,9 +29,9 @@ export default function Home() {
       <header className={styles.header}>
         <h1 className={styles.title}>Tiny Kingdom Idle</h1>
         <p className={styles.tagline}>
-          Carrots grow fast — tap to harvest for {MANUAL_HARVEST_GOLD} gold, or
-          hire a field hand per plot for {WORKER_HARVEST_GOLD} gold per auto
-          harvest (hands get pricier each time you hire).
+          Each field remembers its crop — tap to harvest for{" "}
+          {MANUAL_HARVEST_GOLD} gold, or tap the + icon to hire a hand for{" "}
+          {WORKER_HARVEST_GOLD} gold per auto harvest (pricier each hire).
         </p>
       </header>
 
@@ -60,10 +59,10 @@ export default function Home() {
               plotIndex={i}
               plot={plot}
               now={now}
+              selectedCrop={state.plotSelectedCrops[i] ?? "carrot"}
               hasWorker={state.plotWorkers[i] ?? false}
               workerHireCost={nextWorkerCost}
               canAffordWorker={canAffordNextWorker}
-              onPlantCrop={plantCrop}
               onHarvest={harvest}
               onHireWorker={hireWorkerOnPlot}
             />

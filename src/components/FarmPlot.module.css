@@ -1,6 +1,70 @@
 .plotWrap {
+  position: relative;
   width: 100%;
   max-width: 8.5rem;
+}
+
+.plotChrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+  padding: 0.2rem 0.25rem 0;
+}
+
+.cornerBtn,
+.workerBadge {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  min-height: 1.65rem;
+  border-radius: 10px;
+  border: 2px solid rgba(62, 48, 36, 0.35);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 0 rgba(62, 48, 36, 0.2);
+}
+
+.cornerBtn {
+  padding: 0.1rem 0.2rem;
+  font: inherit;
+  cursor: pointer;
+  gap: 0.05rem;
+}
+
+.cornerBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cornerBtn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.cornerIcon {
+  font-size: 1rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.08));
+}
+
+.hirePlus {
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #3d4a9e;
+  margin-top: -0.05rem;
+}
+
+.workerBadge {
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.15rem;
 }
 
 .plot {
@@ -17,16 +81,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 1.85rem 0.35rem 0.45rem;
   font: inherit;
   color: inherit;
-}
-
-.plot[data-state="empty"] {
-  cursor: default;
-  aspect-ratio: auto;
-  min-height: 6.5rem;
-  padding: 0.5rem 0.35rem;
 }
 
 .plot:active:not(:disabled) {
@@ -35,20 +92,21 @@
 }
 
 .plot:disabled {
-  cursor: not-allowed;
-  opacity: 0.85;
+  cursor: default;
+  opacity: 1;
 }
 
 .inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.2rem;
   text-align: center;
   font-size: 0.72rem;
   font-weight: 800;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
   line-height: 1.15;
+  width: 100%;
 }
 
 .emoji {
@@ -59,11 +117,11 @@
 
 .barWrap {
   width: 78%;
-  height: 6px;
+  height: 8px;
   border-radius: 99px;
   background: rgba(0, 0, 0, 0.12);
   overflow: hidden;
-  margin-top: 0.1rem;
+  margin-top: 0.05rem;
 }
 
 .bar {
@@ -73,80 +131,11 @@
   transition: width 0.2s linear;
 }
 
-.chooseLabel {
-  font-size: 0.68rem;
-}
-
-.cropRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  justify-content: center;
-  margin-top: 0.2rem;
-}
-
-.cropBtn {
-  border: 2px solid var(--panel-border);
-  border-radius: 10px;
-  padding: 0.35rem 0.5rem;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 800;
-  cursor: pointer;
-  background: linear-gradient(180deg, #fff9e6, #ffe8a3);
-  box-shadow: 0 2px 0 var(--panel-border);
-}
-
-.cropBtn:active {
-  transform: translateY(1px);
-  box-shadow: 0 1px 0 var(--panel-border);
-}
-
-.workerLine {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.08rem;
-  width: 100%;
-  margin-top: 0.15rem;
-}
-
-.workerLabel {
-  font-size: 0.58rem;
-  font-weight: 800;
-  opacity: 0.85;
-}
-
 .barWorker {
   height: 100%;
   border-radius: 99px;
   background: linear-gradient(90deg, #90caf9, #5c6bc0);
   transition: width 0.2s linear;
-}
-
-.hireBtn {
-  width: 100%;
-  max-width: 8.5rem;
-  margin-top: 0.35rem;
-  border: 2px solid var(--panel-border);
-  border-radius: 10px;
-  padding: 0.3rem 0.45rem;
-  font: inherit;
-  font-size: 0.62rem;
-  font-weight: 800;
-  cursor: pointer;
-  background: linear-gradient(180deg, #e8eaf6, #c5cae9);
-  box-shadow: 0 2px 0 var(--panel-border);
-}
-
-.hireBtn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.hireBtn:active:not(:disabled) {
-  transform: translateY(1px);
-  box-shadow: 0 1px 0 var(--panel-border);
 }
 
 .readyPulse {
