@@ -3,19 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   buyPlot,
-  fieldWorkDrip,
+  createInitialState,
   harvestPlot,
-  plantInPlot,
+  hireWorkerForPlot,
+  selectCropForPlot,
   advanceStateToNow,
 } from "@/lib/game/state";
-import { loadGame, saveGame } from "@/lib/game/persistence";
-import type { GameState } from "@/lib/game/types";
-import { GROW_MS, plotPurchaseCost } from "@/lib/game/types";
+import { clearSavedGame, loadGame, saveGame } from "@/lib/game/persistence";
+import type { CropId, GameState } from "@/lib/game/types";
+import { GROW_MS, nextWorkerHireCost, plotPurchaseCost } from "@/lib/game/types";
 
 const TICK_MS = 500;
 const SAVE_DEBOUNCE_MS = 400;
-const FIELD_WORK_COOLDOWN_MS = 2_500;
-const FIELD_WORK_BONUS = 1;
 
 export function useIdleGame() {
   const [state, setState] = useState<GameState | null>(null);
@@ -61,21 +60,21 @@ export function useIdleGame() {
     });
   }, []);
 
-  const plant = useCallback(
-    (plotIndex: number) => {
-      setAndPersist((s) => {
-        const t = Date.now();
-        return plantInPlot(s, plotIndex, t) ?? s;
-      });
-    },
-    [setAndPersist],
-  );
-
   const harvest = useCallback(
     (plotIndex: number) => {
       setAndPersist((s) => {
         const t = Date.now();
         return harvestPlot(s, plotIndex, t) ?? s;
+      });
+    },
+    [setAndPersist],
+  );
+
+  const pickCropForPlot = useCallback(
+    (plotIndex: number, crop: CropId) => {
+      setAndPersist((s) => {
+        const t = Date.now();
+        return selectCropForPlot(s, plotIndex, crop, t);
       });
     },
     [setAndPersist],
@@ -89,21 +88,21 @@ export function useIdleGame() {
     });
   }, [setAndPersist]);
 
-  const fieldWork = useCallback(() => {
+  const hireWorkerOnPlot = useCallback(
+    (plotIndex: number) => {
+      setAndPersist((s) => {
+        const t = Date.now();
+        return hireWorkerForPlot(s, plotIndex, t) ?? s;
+      });
+    },
+    [setAndPersist],
+  );
+
+  const resetKingdom = useCallback(() => {
     const t = Date.now();
-    setState((s) => {
-      if (!s) return s;
-      const current = advanceStateToNow(s, t);
-      return (
-        fieldWorkDrip(
-          current,
-          t,
-          FIELD_WORK_COOLDOWN_MS,
-          FIELD_WORK_BONUS,
-        ) ?? current
-      );
-    });
+    clearSavedGame();
     setNow(t);
+    setState(createInitialState(t));
   }, []);
 
   const nextPlotCost =
@@ -111,22 +110,31 @@ export function useIdleGame() {
       ? plotPurchaseCost(effectiveState.plots.length)
       : 0;
 
-  const fieldWorkReady =
+  const nextWorkerCost =
+    effectiveState != null
+      ? nextWorkerHireCost(effectiveState.plotWorkers)
+      : null;
+
+  const canBuyPlot =
+    effectiveState != null && effectiveState.gold >= nextPlotCost;
+
+  const canAffordNextWorker =
     effectiveState != null &&
-    now > 0 &&
-    (effectiveState.lastFieldWorkAt === 0 ||
-      now - effectiveState.lastFieldWorkAt >= FIELD_WORK_COOLDOWN_MS);
+    nextWorkerCost != null &&
+    effectiveState.gold >= nextWorkerCost;
 
   return {
     state: effectiveState,
     now,
     growMs: GROW_MS,
-    plant,
     harvest,
+    pickCropForPlot,
     buyNextPlot,
+    hireWorkerOnPlot,
     nextPlotCost,
-    fieldWork,
-    fieldWorkReady,
-    fieldWorkCooldownMs: FIELD_WORK_COOLDOWN_MS,
+    nextWorkerCost,
+    canBuyPlot,
+    canAffordNextWorker,
+    resetKingdom,
   };
 }

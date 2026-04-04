@@ -2,36 +2,38 @@
 
 import { FarmPlot } from "@/components/FarmPlot";
 import { useIdleGame } from "@/hooks/useIdleGame";
-import { PLANT_SEED_COST } from "@/lib/game/types";
+import { MANUAL_HARVEST_GOLD, WORKER_HARVEST_GOLD } from "@/lib/game/types";
 import styles from "./page.module.css";
 
 export default function Home() {
   const {
     state,
     now,
-    plant,
     harvest,
+    pickCropForPlot,
     buyNextPlot,
+    hireWorkerOnPlot,
     nextPlotCost,
-    fieldWork,
-    fieldWorkReady,
-    fieldWorkCooldownMs,
+    nextWorkerCost,
+    canBuyPlot,
+    canAffordNextWorker,
+    resetKingdom,
   } = useIdleGame();
 
   if (!state) {
     return <p className={styles.loading}>Loading your tiny kingdom…</p>;
   }
 
-  const canPlant = state.seeds >= PLANT_SEED_COST;
-  const canBuyPlot = state.gold >= nextPlotCost;
+  const hiredHands = state.plotWorkers.filter(Boolean).length;
 
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>Tiny Kingdom Idle</h1>
         <p className={styles.tagline}>
-          Farm gold &amp; seeds — play in bursts or let crops grow while you
-          wander off.
+          Open ⋯ on a field to plant. Tap when ready for {MANUAL_HARVEST_GOLD}{" "}
+          gold, or + to hire the next hand ({WORKER_HARVEST_GOLD}g per auto
+          harvest once ripe).
         </p>
       </header>
 
@@ -41,10 +43,26 @@ export default function Home() {
             <span aria-hidden>🪙</span>
             <span>{Math.floor(state.gold)} gold</span>
           </span>
-          <span className={`${styles.pill} ${styles.pillSeed}`}>
-            <span aria-hidden>🌾</span>
-            <span>{state.seeds} seeds</span>
-          </span>
+          {nextWorkerCost != null ? (
+            <span
+              className={`${styles.pill} ${styles.pillWorker}`}
+              title={
+                hiredHands > 0
+                  ? `${hiredHands} field hand${hiredHands === 1 ? "" : "s"} hired`
+                  : undefined
+              }
+            >
+              <span aria-hidden>🧑‍🌾</span>
+              <span>Next hand: {nextWorkerCost}g</span>
+            </span>
+          ) : hiredHands > 0 ? (
+            <span className={`${styles.pill} ${styles.pillWorker}`}>
+              <span aria-hidden>🧑‍🌾</span>
+              <span>
+                {hiredHands} hand{hiredHands === 1 ? "" : "s"} · full staff
+              </span>
+            </span>
+          ) : null}
         </div>
 
         <h2 className={styles.sectionTitle}>Your farm</h2>
@@ -55,9 +73,13 @@ export default function Home() {
               plotIndex={i}
               plot={plot}
               now={now}
-              canPlant={canPlant}
-              onPlant={plant}
+              selectedCrop={state.plotSelectedCrops[i] ?? null}
+              hasWorker={state.plotWorkers[i] ?? false}
+              workerHireCost={nextWorkerCost}
+              canAffordWorker={canAffordNextWorker}
               onHarvest={harvest}
+              onHireWorker={hireWorkerOnPlot}
+              onPickCrop={pickCropForPlot}
             />
           ))}
         </div>
@@ -74,12 +96,21 @@ export default function Home() {
             </button>
             <button
               type="button"
-              className={`${styles.btn} ${styles.btnSecondary}`}
-              onClick={fieldWork}
-              disabled={!fieldWorkReady}
-              title={`Bonus gold every ${fieldWorkCooldownMs / 1000}s while active`}
+              className={`${styles.btn} ${styles.btnDanger}`}
+              onClick={() => {
+                if (
+                  typeof window !== "undefined" &&
+                  !window.confirm(
+                    "Reset the kingdom? This clears saved progress in this browser.",
+                  )
+                ) {
+                  return;
+                }
+                resetKingdom();
+              }}
+              title="Clear save and start fresh (for testing)"
             >
-              Field work (+1 gold)
+              Reset kingdom
             </button>
           </div>
         </div>

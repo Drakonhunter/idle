@@ -1,29 +1,55 @@
+export type CropId = "carrot";
+
 export type PlotState =
   | { kind: "empty" }
-  | { kind: "growing"; plantedAt: number }
-  | { kind: "ready"; ripenedAt: number };
+  | { kind: "growing"; crop: CropId; plantedAt: number }
+  | { kind: "ready"; crop: CropId; ripenedAt: number };
 
 export type GameState = {
-  version: 1;
+  version: 5;
   gold: number;
-  seeds: number;
   plots: PlotState[];
+  /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */
+  plotWorkers: boolean[];
+  /**
+   * Crop assigned to this plot; replants after harvest. `null` = fallow until player picks.
+   */
+  plotSelectedCrops: (CropId | null)[];
   lastSavedAt: number;
-  /** Last time "field work" active bonus was used (ms since epoch). */
-  lastFieldWorkAt: number;
 };
 
 export const SAVE_KEY = "tiny-kingdom-idle-v1";
-export const GROW_MS = 45_000;
-export const PLANT_SEED_COST = 1;
-export const HARVEST_GOLD = 4;
-export const HARVEST_SEED_REFUND = 1;
+/** Carrot growth duration (4× faster than the original 45s loop). */
+export const GROW_MS = 11_250;
+export const MANUAL_HARVEST_GOLD = 8;
+export const WORKER_HARVEST_GOLD = 4;
 export const STARTING_GOLD = 0;
-export const STARTING_SEEDS = 12;
-export const STARTING_PLOT_COUNT = 3;
+export const STARTING_PLOT_COUNT = 1;
 
-export function plotPurchaseCost(plotIndex: number): number {
-  if (plotIndex < STARTING_PLOT_COUNT) return 0;
-  const n = plotIndex - STARTING_PLOT_COUNT + 1;
-  return Math.floor(20 * Math.pow(1.55, n));
+/** Gold to buy the next plot: 10 for 2nd, 50 for 3rd, then rising. */
+export function plotPurchaseCost(currentPlotCount: number): number {
+  if (currentPlotCount < 1) return 0;
+  if (currentPlotCount === 1) return 10;
+  if (currentPlotCount === 2) return 50;
+  return Math.floor(50 * Math.pow(3.2, currentPlotCount - 2));
+}
+
+/**
+ * Cost to hire a worker on a plot that does not have one yet.
+ * Price is based on how many workers are already employed (any field).
+ */
+export function nextWorkerHireCost(plotWorkers: boolean[]): number | null {
+  if (plotWorkers.length === 0) return null;
+  if (!plotWorkers.includes(false)) return null;
+  const hired = plotWorkers.filter(Boolean).length;
+  const tiers = [50, 400, 2800, 18_000, 115_000];
+  if (hired < tiers.length) return tiers[hired];
+  return Math.floor(
+    tiers[tiers.length - 1] * Math.pow(5.2, hired - tiers.length + 1),
+  );
+}
+
+export function cropEmoji(crop: CropId): string {
+  if (crop === "carrot") return "🥕";
+  return "🌱";
 }
