@@ -33,7 +33,7 @@ function statusLabel(
 ): string {
   if (plot.kind === "growing") return "Growing";
   if (plot.kind === "ready" && hasWorker) return "Hand harvesting";
-  if (plot.kind === "ready") return "Ready to harvest";
+  if (plot.kind === "ready") return "Click to harvest!";
   if (selectedCrop == null) return "Fallow";
   return "";
 }
