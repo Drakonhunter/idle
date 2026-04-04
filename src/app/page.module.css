@@ -1,0 +1,174 @@
+.page {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.5);
+}
+
+.tagline {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  opacity: 0.88;
+}
+
+.panel {
+  background: var(--panel);
+  border: 3px solid var(--panel-border);
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 6px 0 var(--panel-border), 0 12px 24px var(--shadow);
+}
+
+.resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 2px solid var(--panel-border);
+  font-weight: 800;
+  font-size: 0.95rem;
+  background: #fff;
+  box-shadow: 0 2px 0 var(--panel-border);
+}
+
+.pillGold {
+  border-color: #c9a227;
+  background: linear-gradient(180deg, #fff9e6, #ffe8a3);
+}
+
+.pillSeed {
+  border-color: #4a8c3a;
+  background: linear-gradient(180deg, #f4fff0, #c8e9b0);
+}
+
+.sectionTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.plotGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.btnRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn {
+  border: 3px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  background: #fff;
+  box-shadow: 0 4px 0 var(--panel-border);
+  transition: transform 0.06s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--panel-border);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background: linear-gradient(180deg, #ffe08a, #f4b942);
+}
+
+.btnSecondary {
+  background: linear-gradient(180deg, #c8f0ff, #8fd4f0);
+}
+
+.roadmap {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 2px dashed rgba(90, 70, 53, 0.35);
+}
+
+.roadmapTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.tracts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.tract {
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 0.35rem 0.6rem;
+  border-radius: 10px;
+  border: 2px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.tractActive {
+  background: linear-gradient(180deg, #d4f7c5, #a8e08a);
+}
+
+.tractSoon {
+  opacity: 0.55;
+}
+
+.footer {
+  margin-top: 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  font-weight: 800;
+}
