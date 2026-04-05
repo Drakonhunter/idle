@@ -1,8 +1,12 @@
 import type { CropId, GameState, PlotState } from "./types";
 import { SAVE_KEY } from "./types";
-import { advanceStateToNow, createInitialState } from "./state";
+import {
+  advanceStateToNow,
+  createFreshStats,
+  createInitialState,
+} from "./state";
 
-const CURRENT_SAVE_VERSION = 5 as const;
+const CURRENT_SAVE_VERSION = 6 as const;
 
 type LegacyV1Plot =
   | { kind: "empty" }
@@ -40,6 +44,15 @@ type LegacyV4State = {
   plots: PlotState[];
   plotWorkers: boolean[];
   plotSelectedCrops: CropId[];
+  lastSavedAt: number;
+};
+
+type LegacyV5State = {
+  version: 5;
+  gold: number;
+  plots: PlotState[];
+  plotWorkers: boolean[];
+  plotSelectedCrops: (CropId | null)[];
   lastSavedAt: number;
 };
 
@@ -125,7 +138,7 @@ function migrateV3ToV4(parsed: LegacyV3State): LegacyV4State {
 }
 
 /** v4 → v5: no default crop; fallow empty plots */
-function migrateV4ToV5(parsed: LegacyV4State): GameState {
+function migrateV4ToV5(parsed: LegacyV4State): LegacyV5State {
   const plots = parsed.plots;
   const plotWorkers = alignPlotWorkers(plots, parsed.plotWorkers);
   const plotSelectedCrops: (CropId | null)[] = plots.map((plot) =>
@@ -140,6 +153,26 @@ function migrateV4ToV5(parsed: LegacyV4State): GameState {
     plots,
     plotWorkers,
     plotSelectedCrops,
+    lastSavedAt: Number(parsed.lastSavedAt) || 0,
+  };
+}
+
+/** v5 → v6: harvest stats + tutorial; existing saves skip the guided intro. */
+function migrateV5ToV6(parsed: LegacyV5State): GameState {
+  const plots = parsed.plots;
+  const plotWorkers = alignPlotWorkers(plots, parsed.plotWorkers);
+  const plotSelectedCrops = alignSelectedCropsV5(
+    plots,
+    parsed.plotSelectedCrops,
+  );
+  return {
+    version: 6,
+    gold: Number(parsed.gold) || 0,
+    plots,
+    plotWorkers,
+    plotSelectedCrops,
+    stats: createFreshStats(plots.length),
+    tutorial: { complete: true, step: "done" },
     lastSavedAt: Number(parsed.lastSavedAt) || 0,
   };
 }
@@ -177,6 +210,12 @@ function migrateSaveTowardCurrent(
       version = 5;
       continue;
     }
+    if (version === 5) {
+      const next = migrateV5ToV6(data as unknown as LegacyV5State);
+      data = { ...next } as unknown as Record<string, unknown>;
+      version = 6;
+      continue;
+    }
     return null;
   }
 
@@ -192,15 +231,87 @@ function migrateSaveTowardCurrent(
     plots,
     data.plotSelectedCrops as (CropId | null)[] | undefined,
   );
+  const plotCount = plots.length;
+  const rawStats = data.stats as HarvestStatsLike | undefined;
+  const stats = normalizeHarvestStats(rawStats, plotCount);
+  const rawTutorial = data.tutorial as TutorialLike | undefined;
+  const tutorial = normalizeTutorial(rawTutorial);
 
   return {
-    version: 5,
+    version: 6,
     gold: Number(data.gold) || 0,
     plots,
     plotWorkers,
     plotSelectedCrops,
+    stats,
+    tutorial,
     lastSavedAt: Number(data.lastSavedAt) || 0,
   };
+}
+
+type HarvestStatsLike = {
+  manualCarrotsTotal?: unknown;
+  workerCarrotsTotal?: unknown;
+  manualCarrotsPerPlot?: unknown;
+  workerCarrotsPerPlot?: unknown;
+};
+
+type TutorialLike = {
+  complete?: unknown;
+  step?: unknown;
+};
+
+function normalizeHarvestStats(
+  raw: HarvestStatsLike | undefined,
+  plotCount: number,
+): GameState["stats"] {
+  const base = createFreshStats(plotCount);
+  if (!raw || typeof raw !== "object") return base;
+  const manualTotal = Number(raw.manualCarrotsTotal);
+  const workerTotal = Number(raw.workerCarrotsTotal);
+  const mArr = Array.isArray(raw.manualCarrotsPerPlot)
+    ? raw.manualCarrotsPerPlot.map((n) => Number(n) || 0)
+    : [];
+  const wArr = Array.isArray(raw.workerCarrotsPerPlot)
+    ? raw.workerCarrotsPerPlot.map((n) => Number(n) || 0)
+    : [];
+  return {
+    manualCarrotsTotal: Number.isFinite(manualTotal) ? Math.max(0, manualTotal) : 0,
+    workerCarrotsTotal: Number.isFinite(workerTotal) ? Math.max(0, workerTotal) : 0,
+    manualCarrotsPerPlot: alignPerPlotCounts(mArr, plotCount),
+    workerCarrotsPerPlot: alignPerPlotCounts(wArr, plotCount),
+  };
+}
+
+function alignPerPlotCounts(arr: number[], plotCount: number): number[] {
+  const next = arr.slice(0, plotCount).map((n) => (Number.isFinite(n) ? Math.max(0, n) : 0));
+  while (next.length < plotCount) next.push(0);
+  return next;
+}
+
+const VALID_TUTORIAL_STEPS = new Set<string>([
+  "welcome",
+  "one_parcel",
+  "crop_menu_intro",
+  "open_crop_menu",
+  "harvest_for_land",
+  "buy_field",
+  "plant_second_field",
+  "save_for_worker",
+  "hire_worker",
+  "done",
+]);
+
+function normalizeTutorial(raw: TutorialLike | undefined): GameState["tutorial"] {
+  if (!raw || typeof raw !== "object") {
+    return { complete: false, step: "welcome" };
+  }
+  const complete = Boolean(raw.complete);
+  const stepStr = typeof raw.step === "string" ? raw.step : "";
+  const step = VALID_TUTORIAL_STEPS.has(stepStr)
+    ? (stepStr as GameState["tutorial"]["step"])
+    : "welcome";
+  return { complete, step };
 }
 
 export function loadGame(now: number): GameState {
