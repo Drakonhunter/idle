@@ -1,9 +1,13 @@
 import type { GameState, TutorialStep } from "./types";
 import { nextWorkerHireCost, plotPurchaseCost } from "./types";
 
-/** Full-screen intro modals (welcome + crop tip). The one-parcel beat uses an inline card so the field stays visible. */
+/** Full-screen intro modals (welcome + crop tip + wrap-up). The one-parcel beat uses an inline card so the field stays visible. */
 export function isIntroModalStep(step: TutorialStep): boolean {
-  return step === "welcome" || step === "crop_menu_intro";
+  return (
+    step === "welcome" ||
+    step === "crop_menu_intro" ||
+    step === "tutorial_wrap_up"
+  );
 }
 
 export function nextIntroStep(step: TutorialStep): TutorialStep {
@@ -66,7 +70,7 @@ export function tutorialReconcileState(state: GameState): GameState["tutorial"] 
   t = tutorialMaybeAdvanceOnEconomy({ ...state, tutorial: t });
 
   if (t.step === "hire_worker" && state.plotWorkers.some(Boolean)) {
-    return { complete: true, step: "done" };
+    return { ...t, step: "tutorial_wrap_up" };
   }
 
   return t;

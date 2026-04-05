@@ -56,6 +56,8 @@ export function plotInteraction(
       return { cropMenu: true, harvest: true, hire: false };
     case "hire_worker":
       return { cropMenu: false, harvest: true, hire: true };
+    case "tutorial_wrap_up":
+      return allOn;
     case "done":
       return allOn;
     default:
@@ -67,7 +69,7 @@ export function tutorialUiLock(
   step: TutorialStep,
   tutorialComplete: boolean,
 ): TutorialUiLock {
-  if (tutorialComplete) {
+  if (tutorialComplete || step === "tutorial_wrap_up") {
     return {
       shieldPlotsAndTitle: false,
       shieldActionsRow: false,

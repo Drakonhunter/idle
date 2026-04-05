@@ -28,6 +28,14 @@ function copyForStep(step: TutorialStep): { kicker: string; title: string; body:
           "Tap the little ⋯ button on your field to open the crop menu. For now carrots are your only " +
           "option — more crops will appear as you unlock them. Choose carrots and let the magic soil do its thing!",
       };
+    case "tutorial_wrap_up":
+      return {
+        kicker: "Tutorial complete",
+        title: "The realm is in good hands",
+        body:
+          "Keep growing carrots, expand your fields, and check in on your treasury whenever you like. " +
+          "Something exciting may be stirring just beyond the horizon — stay tuned!",
+      };
     default:
       return { kicker: "", title: "", body: "" };
   }
