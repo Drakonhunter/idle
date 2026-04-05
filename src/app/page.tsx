@@ -11,6 +11,7 @@ import { useIdleGame } from "@/hooks/useIdleGame";
 import {
   arcaneTractUnlocked,
   canShowWizardOffer,
+  carrotSaleGrossGold,
   manualCarrotHarvestGold,
   workerCarrotHarvestGold,
   workerCarrotWageAmount,
@@ -141,9 +142,11 @@ export default function Home() {
   const totalCarrots = manualCarrotsTotal + workerCarrotsTotal;
   const manualGoldEach = manualCarrotHarvestGold(state);
   const workerGoldEach = workerCarrotHarvestGold(state);
-  const grossGoldFromCarrots =
+  const saleGrossPerCarrot = carrotSaleGrossGold(state);
+  const grossGoldFromCarrots = totalCarrots * saleGrossPerCarrot;
+  const treasuryGoldFromCarrots =
     manualCarrotsTotal * manualGoldEach + workerCarrotsTotal * workerGoldEach;
-  const profitGoldFromCarrots = grossGoldFromCarrots - workerWagesTotalPaid;
+  const profitGoldFromCarrots = treasuryGoldFromCarrots - workerWagesTotalPaid;
   const arcaneOpen = arcaneTractUnlocked(state);
   const showWizardInitialModal =
     tut.complete &&
@@ -271,11 +274,11 @@ export default function Home() {
                     aria-labelledby="stats-tab-summary"
                   >
                     <p className={styles.statsHint}>
-                      Your harvests pay {manualGoldEach} gold per carrot into the treasury. Field hands remit{" "}
-                      {workerGoldEach} gold per carrot; the ledger accrues{" "}
-                      {wageRateLabel(workerCarrotWageAmount(state))} gold in wages per worker-sold carrot (ledger math
-                      is kept to 2 decimal places; gross, wages, and profit below are rounded to whole gold for display).
-                      Open <strong>Breakdown</strong> for full equations. Arcane upgrades can change these amounts.
+                      Each carrot sells at <strong>{saleGrossPerCarrot}g</strong> (sticker). You keep that full amount
+                      when you harvest. Workers net <strong>{workerGoldEach}g</strong> to the treasury each (
+                      <strong>{saleGrossPerCarrot}g</strong> sale −{" "}
+                      {wageRateLabel(workerCarrotWageAmount(state))}g wages). Gross below counts every carrot at sticker;
+                      profit uses actual treasury inflow. Open <strong>Breakdown</strong> for equations.
                     </p>
                     <dl className={styles.statsGrid}>
                       <div className={styles.statsRow}>
@@ -291,8 +294,12 @@ export default function Home() {
                         <dd>{totalCarrots}</dd>
                       </div>
                       <div className={styles.statsRow}>
-                        <dt>Gross gold from carrot sales</dt>
+                        <dt>Gross sales (all carrots at sticker)</dt>
                         <dd>{displayWholeGold(grossGoldFromCarrots)} gold</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Gold into treasury (from carrots)</dt>
+                        <dd>{displayWholeGold(treasuryGoldFromCarrots)} gold</dd>
                       </div>
                       <div className={styles.statsRow}>
                         <dt>Total wages paid</dt>

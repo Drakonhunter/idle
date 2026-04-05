@@ -3,12 +3,12 @@ import {
   ARCANE_ENCHANTED_DROP_CHANCE,
   GROW_MS,
   MANUAL_HARVEST_GOLD,
-  WORKER_HARVEST_GOLD,
   WORKER_POST_RIPE_HARVEST_MS,
   WORKER_WAGE_PER_CARROT,
 } from "./types";
 import {
   carrotGrowMs,
+  carrotSaleGrossGold,
   carrotWorkerPostRipeMs,
   manualCarrotHarvestGold,
   workerCarrotHarvestGold,
@@ -42,18 +42,16 @@ export type KingdomStatsBreakdown = {
     equation: string;
     result: number;
   };
-  workerRemit: {
-    base: number;
-    mult: number;
-    multLabel: string;
-    equation: string;
-    result: number;
-  };
-  wages: {
-    base: number;
-    hasDiscount: boolean;
-    equation: string;
-    result: number;
+  workerNet: {
+    /** Gross sale per carrot (same as manual harvest): 10 × (1 + 0.1 Golden market). */
+    saleGrossPerCarrot: number;
+    saleEquation: string;
+    /** Base worker wage = 50% of base carrot price (5g). */
+    baseWorkerWage: number;
+    wageEquation: string;
+    wageResult: number;
+    netEquation: string;
+    netResult: number;
   };
   enchanted: {
     harvestUnlocked: boolean;
@@ -64,13 +62,17 @@ export type KingdomStatsBreakdown = {
   aggregates: {
     manualCount: number;
     workerCount: number;
+    totalCarrots: number;
+    saleGrossPerCarrot: number;
     manualGoldEach: number;
-    workerGoldEach: number;
+    workerNetEach: number;
     wageEach: number;
     grossEquation: string;
     grossValue: number;
     wagesTotalRaw: number;
     wagesEquation: string;
+    treasuryEquation: string;
+    treasuryValue: number;
     profitEquation: string;
     profitValue: number;
   };
@@ -91,19 +93,23 @@ export function buildKingdomStatsBreakdown(state: GameState): KingdomStatsBreakd
 
   const manualResult = manualCarrotHarvestGold(state);
   const manualEq = hasSale
-    ? `max(1, round(${MANUAL_HARVEST_GOLD} × 1.1)) = ${manualResult}`
+    ? `max(1, round(${MANUAL_HARVEST_GOLD} × (1 + 0.1))) = ${manualResult}`
     : `max(1, round(${MANUAL_HARVEST_GOLD} × 1)) = ${manualResult}`;
 
-  const workerResult = workerCarrotHarvestGold(state);
-  const workerEq = hasSale
-    ? `max(1, round(${WORKER_HARVEST_GOLD} × 1.1)) = ${workerResult}`
-    : `max(1, round(${WORKER_HARVEST_GOLD} × 1)) = ${workerResult}`;
+  const saleGrossPerCarrot = carrotSaleGrossGold(state);
+  const saleGrossEq = hasSale
+    ? `gross_sale = max(1, round(${MANUAL_HARVEST_GOLD} × 1.1)) = ${saleGrossPerCarrot}`
+    : `gross_sale = ${saleGrossPerCarrot}`;
 
   const hasWageDiscount = state.arcane.pathUpgrades.cheaperWages;
   const wageResult = workerCarrotWageAmount(state);
+  const baseWorkerWage = WORKER_WAGE_PER_CARROT;
   const wageEq = hasWageDiscount
-    ? `round2(${WORKER_WAGE_PER_CARROT} × 0.9) = ${wageResult}`
-    : `${WORKER_WAGE_PER_CARROT} (no Fair ledgers discount)`;
+    ? `modified_wage = round2(${baseWorkerWage} × (1 − 0.1)) = round2(5 × 0.9) = ${wageResult}`
+    : `wage = ${baseWorkerWage} (base = ${MANUAL_HARVEST_GOLD} × 50%, no Fair ledgers)`;
+
+  const workerNetResult = workerCarrotHarvestGold(state);
+  const netEq = `round2(gross_sale − wage) = round2(${saleGrossPerCarrot} − ${wageResult}) = ${workerNetResult}`;
 
   const a = state.arcane;
   const dropPct = ARCANE_ENCHANTED_DROP_CHANCE * 100;
@@ -115,13 +121,15 @@ export function buildKingdomStatsBreakdown(state: GameState): KingdomStatsBreakd
 
   const m = state.stats.manualCarrotsTotal;
   const w = state.stats.workerCarrotsTotal;
-  const wg = workerResult;
+  const totalCarrots = m + w;
   const me = manualResult;
   const wageEach = wageResult;
+  const workerNetEach = workerNetResult;
 
-  const grossValue = m * me + w * wg;
+  const grossSalesValue = totalCarrots * saleGrossPerCarrot;
+  const treasuryFromCarrots = m * me + w * workerNetEach;
   const wagesRaw = state.stats.workerWagesTotalPaid;
-  const profitValue = grossValue - wagesRaw;
+  const profitValue = treasuryFromCarrots - wagesRaw;
 
   return {
     timing: {
@@ -144,18 +152,14 @@ export function buildKingdomStatsBreakdown(state: GameState): KingdomStatsBreakd
       equation: manualEq,
       result: manualResult,
     },
-    workerRemit: {
-      base: WORKER_HARVEST_GOLD,
-      mult: goldMult,
-      multLabel,
-      equation: workerEq,
-      result: workerResult,
-    },
-    wages: {
-      base: WORKER_WAGE_PER_CARROT,
-      hasDiscount: hasWageDiscount,
-      equation: wageEq,
-      result: wageResult,
+    workerNet: {
+      saleGrossPerCarrot,
+      saleEquation: saleGrossEq,
+      baseWorkerWage,
+      wageEquation: wageEq,
+      wageResult,
+      netEquation: netEq,
+      netResult: workerNetResult,
     },
     enchanted: {
       harvestUnlocked: a.enchantedHarvestUnlocked,
@@ -166,17 +170,21 @@ export function buildKingdomStatsBreakdown(state: GameState): KingdomStatsBreakd
     aggregates: {
       manualCount: m,
       workerCount: w,
+      totalCarrots,
+      saleGrossPerCarrot,
       manualGoldEach: me,
-      workerGoldEach: wg,
+      workerNetEach,
       wageEach,
-      grossEquation: `${m} × ${me} + ${w} × ${wg}`,
-      grossValue,
+      grossEquation: `${totalCarrots} × ${saleGrossPerCarrot} (gross gold per carrot sold, manual or worker)`,
+      grossValue: grossSalesValue,
       wagesTotalRaw: wagesRaw,
       wagesEquation:
         w > 0
           ? `ledger total (sum of ${wageEach}g per worker carrot, 2dp) = ${wagesRaw}`
           : "No worker carrots yet.",
-      profitEquation: `gross − wages_total = ${grossValue} − ${wagesRaw}`,
+      treasuryEquation: `${m} × ${me} + ${w} × ${workerNetEach}`,
+      treasuryValue: treasuryFromCarrots,
+      profitEquation: `treasury_from_carrots − wages_total = ${treasuryFromCarrots} − ${wagesRaw}`,
       profitValue,
     },
   };

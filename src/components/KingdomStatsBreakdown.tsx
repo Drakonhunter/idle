@@ -14,7 +14,7 @@ function Eq({ children }: { children: ReactNode }) {
 }
 
 export function KingdomStatsBreakdownView({ b, displayWholeGold }: Props) {
-  const { timing, manualGold, workerRemit, wages, enchanted, aggregates } = b;
+  const { timing, manualGold, workerNet, enchanted, aggregates } = b;
 
   return (
     <div className={styles.wrap}>
@@ -58,10 +58,11 @@ export function KingdomStatsBreakdownView({ b, displayWholeGold }: Props) {
           Gold per carrot (before aggregates)
         </h3>
         <p className={styles.pMuted}>
-          Three separate numbers: what <strong>you</strong> earn per click, what the <strong>treasury</strong> keeps
-          per worker sale, and what the <strong>ledger</strong> records as wages. They are not meant to sum to one
-          “total sale” in the UI — the worker path is “remit + wage = conceptual 10g sale” only when Golden market is
-          off (5 + 5); with Golden market, remit is rounded up (6g) while wages use the Fair ledgers rule (4.5g).
+          <strong>Gross sale</strong> per carrot: <Eq>{manualGold.base} × (1 + Golden market bonus)</Eq> (rounded), same
+          for manual or worker. <strong>Your harvest</strong> keeps full gross. <strong>Worker path:</strong> base wage
+          is <Eq>{manualGold.base} × 50% = 5</Eq>; Fair ledgers uses <Eq>5 × (1 − 0.1) = 4.5</Eq>.{" "}
+          <strong>Net to treasury</strong> per worker carrot: <Eq>round2(gross_sale − wage)</Eq> (e.g.{" "}
+          <Eq>11 − 4.5 = 6.5</Eq> with both upgrades).
         </p>
         <p className={styles.p}>
           <strong>Your harvest</strong> — base <Eq>{manualGold.base}g</Eq>,{" "}
@@ -71,18 +72,22 @@ export function KingdomStatsBreakdownView({ b, displayWholeGold }: Props) {
           <Eq>{manualGold.equation}</Eq> → <strong>{manualGold.result}g</strong> to treasury each
         </p>
         <p className={styles.p}>
-          <strong>Worker remit</strong> — base <Eq>{workerRemit.base}g</Eq>,{" "}
-          <span className={styles.mod}>{workerRemit.multLabel}</span>
+          <strong>Gross sale</strong> (manual or worker — same price)
         </p>
         <p className={styles.p}>
-          <Eq>{workerRemit.equation}</Eq> → <strong>{workerRemit.result}g</strong> to treasury each
+          <Eq>{workerNet.saleEquation}</Eq>
         </p>
         <p className={styles.p}>
-          <strong>Wage ledger</strong> — base <Eq>{wages.base}g</Eq> per worker-sold carrot
-          {wages.hasDiscount ? ", Fair ledgers ×0.9 (then round2)" : ""}
+          <strong>Worker wage</strong> (ledger)
         </p>
         <p className={styles.p}>
-          <Eq>{wages.equation}</Eq> → <strong>{wages.result}g</strong> accrued per worker carrot
+          <Eq>{workerNet.wageEquation}</Eq> → <strong>{workerNet.wageResult}g</strong> per worker carrot
+        </p>
+        <p className={styles.p}>
+          <strong>Net to treasury</strong> (worker harvest only)
+        </p>
+        <p className={styles.p}>
+          <Eq>{workerNet.netEquation}</Eq> → <strong>{workerNet.netResult}g</strong> per worker carrot
         </p>
       </section>
 
@@ -112,11 +117,18 @@ export function KingdomStatsBreakdownView({ b, displayWholeGold }: Props) {
           Kingdom stats (your totals)
         </h3>
         <p className={styles.p}>
-          <strong>Gross gold from carrot sales</strong> (unrounded sum, display rounded below)
+          <strong>Gross gold from carrot sales</strong> (every carrot counted at gross sale price)
         </p>
         <p className={styles.p}>
           <Eq>{aggregates.grossEquation}</Eq> = <strong>{aggregates.grossValue}g</strong> → display{" "}
           <strong>{displayWholeGold(aggregates.grossValue)}g</strong>
+        </p>
+        <p className={styles.p}>
+          <strong>Gold actually added to treasury</strong> from carrots (matches your save)
+        </p>
+        <p className={styles.p}>
+          <Eq>{aggregates.treasuryEquation}</Eq> = <strong>{aggregates.treasuryValue}g</strong> → display{" "}
+          <strong>{displayWholeGold(aggregates.treasuryValue)}g</strong>
         </p>
         <p className={styles.p}>
           <strong>Total wages paid</strong> (ledger, 2dp in save)
@@ -125,7 +137,7 @@ export function KingdomStatsBreakdownView({ b, displayWholeGold }: Props) {
           <Eq>{aggregates.wagesEquation}</Eq>
         </p>
         <p className={styles.p}>
-          <strong>Profit (carrots)</strong>
+          <strong>Profit (carrots)</strong> — treasury from carrots minus wages
         </p>
         <p className={styles.p}>
           <Eq>{aggregates.profitEquation}</Eq> = <strong>{aggregates.profitValue}g</strong> → display{" "}
