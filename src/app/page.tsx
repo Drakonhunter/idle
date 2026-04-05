@@ -5,6 +5,7 @@ import { ArcaneTractPanel } from "@/components/ArcaneTractPanel";
 import { FarmPlot } from "@/components/FarmPlot";
 import { TutorialModal } from "@/components/TutorialModal";
 import { TutorialOneParcelPanel } from "@/components/TutorialPanel";
+import { KingdomStatsBreakdownView } from "@/components/KingdomStatsBreakdown";
 import { WizardArcaneModal } from "@/components/WizardArcaneModal";
 import { useIdleGame } from "@/hooks/useIdleGame";
 import {
@@ -14,6 +15,7 @@ import {
   workerCarrotHarvestGold,
   workerCarrotWageAmount,
 } from "@/lib/game/arcane";
+import { buildKingdomStatsBreakdown } from "@/lib/game/statsBreakdown";
 import {
   plotInteraction,
   tutorialUiLock,
@@ -83,6 +85,7 @@ function tutorialBanner(step: TutorialStep): { title: string; body: string } | n
 
 export default function Home() {
   const [statsOpen, setStatsOpen] = useState(false);
+  const [statsTab, setStatsTab] = useState<"summary" | "breakdown">("summary");
   const [wizardModal, setWizardModal] = useState<"initial" | "return" | null>(
     null,
   );
@@ -231,52 +234,103 @@ export default function Home() {
             </button>
             {statsOpen ? (
               <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
-                <p className={styles.statsHint}>
-                  Your harvests pay {manualGoldEach} gold per carrot into the treasury. Field hands remit{" "}
-                  {workerGoldEach} gold per carrot; the ledger accrues{" "}
-                  {wageRateLabel(workerCarrotWageAmount(state))} gold in wages per worker-sold carrot (ledger math is
-                  kept to 2 decimal places; gross, wages, and profit below are rounded to whole gold for display). Arcane
-                  upgrades can
-                  change these amounts.
-                </p>
-                <dl className={styles.statsGrid}>
-                  <div className={styles.statsRow}>
-                    <dt>Carrots you harvested</dt>
-                    <dd>{manualCarrotsTotal}</dd>
-                  </div>
-                  <div className={styles.statsRow}>
-                    <dt>Carrots field hands harvested</dt>
-                    <dd>{workerCarrotsTotal}</dd>
-                  </div>
-                  <div className={styles.statsRow}>
-                    <dt>Total carrots collected</dt>
-                    <dd>{totalCarrots}</dd>
-                  </div>
-                  <div className={styles.statsRow}>
-                    <dt>Gross gold from carrot sales</dt>
-                    <dd>{displayWholeGold(grossGoldFromCarrots)} gold</dd>
-                  </div>
-                  <div className={styles.statsRow}>
-                    <dt>Total wages paid</dt>
-                    <dd>{displayWholeGold(workerWagesTotalPaid)} gold</dd>
-                  </div>
-                  <div className={styles.statsRow}>
-                    <dt>Profit to treasury (from carrots)</dt>
-                    <dd>{displayWholeGold(profitGoldFromCarrots)} gold</dd>
-                  </div>
-                  {arcaneOpen ? (
-                    <>
+                <div
+                  className={styles.statsTabBar}
+                  role="tablist"
+                  aria-label="Kingdom stats view"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    id="stats-tab-summary"
+                    aria-selected={statsTab === "summary"}
+                    aria-controls="stats-panel-summary"
+                    className={`${styles.statsTab} ${statsTab === "summary" ? styles.statsTabActive : ""}`}
+                    onClick={() => setStatsTab("summary")}
+                  >
+                    Summary
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="stats-tab-breakdown"
+                    aria-selected={statsTab === "breakdown"}
+                    aria-controls="stats-panel-breakdown"
+                    className={`${styles.statsTab} ${statsTab === "breakdown" ? styles.statsTabActive : ""}`}
+                    onClick={() => setStatsTab("breakdown")}
+                  >
+                    Breakdown
+                  </button>
+                </div>
+
+                {statsTab === "summary" ? (
+                  <div
+                    role="tabpanel"
+                    id="stats-panel-summary"
+                    aria-labelledby="stats-tab-summary"
+                  >
+                    <p className={styles.statsHint}>
+                      Your harvests pay {manualGoldEach} gold per carrot into the treasury. Field hands remit{" "}
+                      {workerGoldEach} gold per carrot; the ledger accrues{" "}
+                      {wageRateLabel(workerCarrotWageAmount(state))} gold in wages per worker-sold carrot (ledger math
+                      is kept to 2 decimal places; gross, wages, and profit below are rounded to whole gold for display).
+                      Open <strong>Breakdown</strong> for full equations. Arcane upgrades can change these amounts.
+                    </p>
+                    <dl className={styles.statsGrid}>
                       <div className={styles.statsRow}>
-                        <dt>Enchanted carrots found (lifetime)</dt>
-                        <dd>{enchantedCarrotsTotal}</dd>
+                        <dt>Carrots you harvested</dt>
+                        <dd>{manualCarrotsTotal}</dd>
                       </div>
                       <div className={styles.statsRow}>
-                        <dt>Enchanted carrots in vault</dt>
-                        <dd>{state.arcane.enchantedCarrotsInventory}</dd>
+                        <dt>Carrots field hands harvested</dt>
+                        <dd>{workerCarrotsTotal}</dd>
                       </div>
-                    </>
-                  ) : null}
-                </dl>
+                      <div className={styles.statsRow}>
+                        <dt>Total carrots collected</dt>
+                        <dd>{totalCarrots}</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Gross gold from carrot sales</dt>
+                        <dd>{displayWholeGold(grossGoldFromCarrots)} gold</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Total wages paid</dt>
+                        <dd>{displayWholeGold(workerWagesTotalPaid)} gold</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Profit to treasury (from carrots)</dt>
+                        <dd>{displayWholeGold(profitGoldFromCarrots)} gold</dd>
+                      </div>
+                      {arcaneOpen ? (
+                        <>
+                          <div className={styles.statsRow}>
+                            <dt>Enchanted carrots found (lifetime)</dt>
+                            <dd>{enchantedCarrotsTotal}</dd>
+                          </div>
+                          <div className={styles.statsRow}>
+                            <dt>Enchanted carrots in vault</dt>
+                            <dd>{state.arcane.enchantedCarrotsInventory}</dd>
+                          </div>
+                        </>
+                      ) : null}
+                    </dl>
+                  </div>
+                ) : (
+                  <div
+                    role="tabpanel"
+                    id="stats-panel-breakdown"
+                    aria-labelledby="stats-tab-breakdown"
+                  >
+                    <p className={styles.statsHint}>
+                      Formulas match the simulation code (growth, worker delay, gold, wages, enchanted drops). Use this
+                      to verify numbers if something looks off.
+                    </p>
+                    <KingdomStatsBreakdownView
+                      b={buildKingdomStatsBreakdown(state)}
+                      displayWholeGold={displayWholeGold}
+                    />
+                  </div>
+                )}
               </div>
             ) : null}
           </div>

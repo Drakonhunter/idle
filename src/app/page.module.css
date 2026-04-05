@@ -61,6 +61,35 @@
   box-shadow: 0 2px 0 rgba(90, 70, 53, 0.12);
 }
 
+.statsTabBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+  margin-bottom: 0.55rem;
+}
+
+.statsTab {
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 0.35rem 0.65rem;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--text);
+}
+
+.statsTab:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.statsTabActive {
+  background: linear-gradient(180deg, #c8f0ff, #8fd4f0);
+  border-color: #0284c7;
+}
+
 .statsHint {
   margin: 0 0 0.55rem;
   font-size: 0.78rem;
