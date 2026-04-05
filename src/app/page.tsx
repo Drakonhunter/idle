@@ -10,7 +10,10 @@ import {
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
-import { WORKER_WAGE_PER_CARROT } from "@/lib/game/types";
+import {
+  MANUAL_HARVEST_GOLD,
+  WORKER_WAGE_PER_CARROT,
+} from "@/lib/game/types";
 import styles from "./page.module.css";
 
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {
@@ -102,6 +105,12 @@ export default function Home() {
   const uiLock = tutorialUiLock(tut.step, tut.complete);
   const buyFieldDisabled = !canBuyPlot || (!tut.complete && !uiLock.allowBuyField);
 
+  const { manualCarrotsTotal, workerCarrotsTotal, workerWagesTotalPaid } =
+    state.stats;
+  const totalCarrots = manualCarrotsTotal + workerCarrotsTotal;
+  const grossGoldFromCarrots = totalCarrots * MANUAL_HARVEST_GOLD;
+  const profitGoldFromCarrots = grossGoldFromCarrots - workerWagesTotalPaid;
+
   return (
     <main className={styles.page}>
       {!tut.complete ? (
@@ -157,27 +166,34 @@ export default function Home() {
             {statsOpen ? (
               <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
                 <p className={styles.statsHint}>
-                  Field hands earn {WORKER_WAGE_PER_CARROT} gold in wages per carrot sold — the rest still flows to the treasury,
-                  which is why auto-harvest pays out less to the crown than when you harvest by hand.
+                  Every carrot sells for {MANUAL_HARVEST_GOLD} gold at market (gross). Field hands take{" "}
+                  {WORKER_WAGE_PER_CARROT} gold in wages per carrot they sell — what is left is profit to the treasury.
+                  When you harvest yourself, the crown keeps the full sale.
                 </p>
                 <dl className={styles.statsGrid}>
                   <div className={styles.statsRow}>
                     <dt>Carrots you harvested</dt>
-                    <dd>{state.stats.manualCarrotsTotal}</dd>
+                    <dd>{manualCarrotsTotal}</dd>
                   </div>
                   <div className={styles.statsRow}>
                     <dt>Carrots field hands harvested</dt>
-                    <dd>{state.stats.workerCarrotsTotal}</dd>
+                    <dd>{workerCarrotsTotal}</dd>
                   </div>
                   <div className={styles.statsRow}>
                     <dt>Total carrots collected</dt>
-                    <dd>
-                      {state.stats.manualCarrotsTotal + state.stats.workerCarrotsTotal}
-                    </dd>
+                    <dd>{totalCarrots}</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Gross gold from carrot sales</dt>
+                    <dd>{grossGoldFromCarrots} gold</dd>
                   </div>
                   <div className={styles.statsRow}>
                     <dt>Total wages paid</dt>
-                    <dd>{Math.floor(state.stats.workerWagesTotalPaid)} gold</dd>
+                    <dd>{Math.floor(workerWagesTotalPaid)} gold</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Profit to treasury (from carrots)</dt>
+                    <dd>{Math.floor(profitGoldFromCarrots)} gold</dd>
                   </div>
                 </dl>
               </div>
