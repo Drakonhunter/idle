@@ -4,7 +4,6 @@ import {
   ARCANE_WIZARD_RETURN_COST,
   GROW_MS,
   MANUAL_HARVEST_GOLD,
-  WORKER_HARVEST_GOLD,
   WORKER_POST_RIPE_HARVEST_MS,
   WORKER_WAGE_PER_CARROT,
   roundGold2,
@@ -36,9 +35,11 @@ export function manualCarrotHarvestGold(state: GameState): number {
   return Math.max(1, Math.round(MANUAL_HARVEST_GOLD * mult));
 }
 
-export function workerCarrotHarvestGold(state: GameState): number {
-  const mult = state.arcane.pathUpgrades.saleGold ? 1.1 : 1;
-  return Math.max(1, Math.round(WORKER_HARVEST_GOLD * mult));
+/**
+ * Gross gold from one carrot sale (same whether you harvest or a worker does).
+ */
+export function carrotSaleGrossGold(state: GameState): number {
+  return manualCarrotHarvestGold(state);
 }
 
 /**
@@ -49,6 +50,16 @@ export function workerCarrotWageAmount(state: GameState): number {
     return WORKER_WAGE_PER_CARROT;
   }
   return roundGold2(WORKER_WAGE_PER_CARROT * 0.9);
+}
+
+/**
+ * Gold added to treasury when a worker sells a carrot: gross sale minus wage (2dp).
+ * E.g. 11g sale − 4.5g wage → 6.5g.
+ */
+export function workerCarrotHarvestGold(state: GameState): number {
+  const gross = carrotSaleGrossGold(state);
+  const wage = workerCarrotWageAmount(state);
+  return Math.max(0, roundGold2(gross - wage));
 }
 
 export function canShowWizardOffer(state: GameState): boolean {

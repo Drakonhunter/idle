@@ -22,7 +22,7 @@ import {
   workerCarrotHarvestGold,
   workerCarrotWageAmount,
 } from "./arcane";
-import { isIntroModalStep, nextIntroStep, tutorialReconcileState } from "./tutorial";
+import { nextIntroStep, tutorialReconcileState } from "./tutorial";
 
 function freshPlots(count: number): PlotState[] {
   return Array.from({ length: count }, () => ({ kind: "empty" as const }));
