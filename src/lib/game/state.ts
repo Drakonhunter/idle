@@ -402,7 +402,6 @@ export function spendEnchantedCarrotOnPath(
 ): GameState | null {
   if (state.arcane.enchantedCarrotsInventory < 1) return null;
   if (state.arcane.pathUpgrades[path]) return null;
-  if (Object.values(state.arcane.pathUpgrades).some(Boolean)) return null;
   return {
     ...state,
     arcane: {

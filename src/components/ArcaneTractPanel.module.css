@@ -84,32 +84,108 @@
   text-align: center;
 }
 
-.pathsTitle {
-  margin: 0 0 0.25rem;
-  font-size: 0.82rem;
+.treesIntro {
+  margin: 0 0 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.tabBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+  margin-bottom: 0.65rem;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 10px;
+  border: 2px solid rgba(91, 33, 182, 0.35);
+  background: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: #4c1d95;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(91, 33, 182, 0.55);
+}
+
+.tabActive {
+  background: linear-gradient(180deg, #ede9fe, #ddd6fe);
+  border-color: #6d28d9;
+  box-shadow: 0 2px 0 rgba(91, 33, 182, 0.35);
+}
+
+.tabEmoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.tabLabel {
+  line-height: 1;
+}
+
+.tabDot {
+  font-size: 0.45rem;
+  color: #16a34a;
+  line-height: 1;
+  margin-left: 0.1rem;
+}
+
+.treePanel {
+  padding: 0.5rem 0.35rem 0.15rem;
+}
+
+.treeTitle {
+  margin: 0 0 0.15rem;
+  font-size: 0.95rem;
   font-weight: 900;
   text-align: center;
+  color: #4c1d95;
 }
 
-.pathsSub {
+.treeTierLabel {
   margin: 0 0 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1.4;
-  opacity: 0.8;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.65;
   text-align: center;
 }
 
-.pathList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.treeCanvas {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  align-items: center;
+  max-width: 18rem;
+  margin: 0 auto;
 }
 
-.pathCard {
+.nodeStem {
+  width: 3px;
+  height: 1rem;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #a78bfa, #7c3aed);
+  margin-bottom: 0.15rem;
+}
+
+.nodeCard {
+  width: 100%;
   margin: 0;
   padding: 0.55rem 0.65rem;
   border-radius: 12px;
@@ -172,13 +248,12 @@
   color: #14532d;
 }
 
-.badgeLocked {
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.25rem 0.5rem;
-  border-radius: 8px;
-  background: rgba(120, 113, 108, 0.15);
-  border: 2px dashed rgba(87, 83, 78, 0.45);
-  color: #44403c;
+.futureHint {
+  margin: 0.65rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-style: italic;
+  opacity: 0.72;
+  text-align: center;
+  line-height: 1.35;
 }
