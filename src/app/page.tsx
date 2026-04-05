@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { FarmPlot } from "@/components/FarmPlot";
 import { TutorialModal } from "@/components/TutorialModal";
 import { TutorialOneParcelPanel } from "@/components/TutorialPanel";
@@ -9,7 +10,7 @@ import {
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
-import { MANUAL_HARVEST_GOLD, WORKER_HARVEST_GOLD } from "@/lib/game/types";
+import { WORKER_WAGE_PER_CARROT } from "@/lib/game/types";
 import styles from "./page.module.css";
 
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {
@@ -46,14 +47,16 @@ function tutorialBanner(step: TutorialStep): { title: string; body: string } | n
         title: "Dreamy field hands",
         body:
           "Keep farming! When you have enough gold, you can hire a helper who auto-harvests after each ripe crop. " +
-          "The + hire button stays sleepy until the treasury is ready.",
+          "Fair wages come out of each sale, so the treasury keeps a bit less per carrot than when you harvest yourself — " +
+          "but hands never sleep. The + hire button stays sleepy until the treasury is ready.",
       };
     case "hire_worker":
       return {
         title: "Hire your first hand",
         body:
-          "Tap the + on either field to hire the next available worker. They collect a little less gold per carrot than you do — " +
-          "but they never get tired. Fancy!",
+          "Tap the + on either field to hire the next available worker. Their fair wage is " +
+          `${WORKER_WAGE_PER_CARROT} gold per carrot from the sale — so the crown still profits, just a little less than when you pick them yourself. ` +
+          "They never get tired. Fancy!",
       };
     default:
       return null;
@@ -61,6 +64,7 @@ function tutorialBanner(step: TutorialStep): { title: string; body: string } | n
 }
 
 export default function Home() {
+  const [statsOpen, setStatsOpen] = useState(false);
   const {
     state,
     now,
@@ -139,6 +143,47 @@ export default function Home() {
             </span>
           ) : null}
         </div>
+
+        {tut.complete ? (
+          <div className={styles.statsBlock}>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSecondary} ${styles.statsToggle}`}
+              onClick={() => setStatsOpen((o) => !o)}
+              aria-expanded={statsOpen}
+            >
+              {statsOpen ? "Hide kingdom stats" : "Kingdom stats"}
+            </button>
+            {statsOpen ? (
+              <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
+                <p className={styles.statsHint}>
+                  Field hands earn {WORKER_WAGE_PER_CARROT} gold in wages per carrot sold — the rest still flows to the treasury,
+                  which is why auto-harvest pays out less to the crown than when you harvest by hand.
+                </p>
+                <dl className={styles.statsGrid}>
+                  <div className={styles.statsRow}>
+                    <dt>Carrots you harvested</dt>
+                    <dd>{state.stats.manualCarrotsTotal}</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Carrots field hands harvested</dt>
+                    <dd>{state.stats.workerCarrotsTotal}</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Total carrots collected</dt>
+                    <dd>
+                      {state.stats.manualCarrotsTotal + state.stats.workerCarrotsTotal}
+                    </dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Total wages paid</dt>
+                    <dd>{Math.floor(state.stats.workerWagesTotalPaid)} gold</dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {tut.step === "one_parcel" ? <TutorialOneParcelPanel onNext={tutorialNext} /> : null}
 

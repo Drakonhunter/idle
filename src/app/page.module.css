@@ -40,6 +40,67 @@
   margin-bottom: 1rem;
 }
 
+.statsBlock {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.statsToggle {
+  font-size: 0.88rem;
+}
+
+.statsPanel {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  border: 2px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 2px 0 rgba(90, 70, 53, 0.12);
+}
+
+.statsHint {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+  opacity: 0.82;
+  text-align: center;
+}
+
+.statsGrid {
+  margin: 0;
+}
+
+.statsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px dashed rgba(90, 70, 53, 0.2);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.statsRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.statsRow dt {
+  margin: 0;
+  font-weight: 800;
+  opacity: 0.85;
+}
+
+.statsRow dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
