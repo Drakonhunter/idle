@@ -1,17 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { carrotGrowMs } from "@/lib/game/arcane";
 import {
+  acceptWizardHelpFree,
   advanceStateToNow,
   advanceTutorialIntro,
   buyPlot,
   createInitialState,
+  dismissWizardOffer,
   harvestPlot,
   hireWorkerForPlot,
+  payWizardForHelp,
   selectCropForPlot,
+  spendEnchantedCarrotOnPath,
 } from "@/lib/game/state";
 import { clearSavedGame, loadGame, saveGame } from "@/lib/game/persistence";
-import type { CropId, GameState } from "@/lib/game/types";
+import type { ArcanePathId, CropId, GameState } from "@/lib/game/types";
 import { GROW_MS, nextWorkerHireCost, plotPurchaseCost } from "@/lib/game/types";
 
 const TICK_MS = 500;
@@ -37,14 +42,18 @@ export function useIdleGame() {
     const id = setInterval(() => {
       const t = Date.now();
       setNow(t);
-      setState((s) => (s ? advanceStateToNow(s, t) : s));
+      setState((s) => (s ? advanceStateToNow(s, t, Math.random) : s));
     }, TICK_MS);
     return () => clearInterval(id);
   }, [gameReady]);
 
   const effectiveState =
     state != null
-      ? advanceStateToNow(state, now > 0 ? now : state.lastSavedAt)
+      ? advanceStateToNow(
+          state,
+          now > 0 ? now : state.lastSavedAt,
+          Math.random,
+        )
       : null;
 
   useEffect(() => {
@@ -63,7 +72,7 @@ export function useIdleGame() {
       if (!s) return s;
       const t = Date.now();
       setNow(t);
-      return updater(advanceStateToNow(s, t));
+      return updater(advanceStateToNow(s, t, Math.random));
     });
   }, []);
 
@@ -71,7 +80,7 @@ export function useIdleGame() {
     (plotIndex: number) => {
       setAndPersist((s) => {
         const t = Date.now();
-        return harvestPlot(s, plotIndex, t) ?? s;
+        return harvestPlot(s, plotIndex, t, Math.random) ?? s;
       });
     },
     [setAndPersist],
@@ -116,6 +125,47 @@ export function useIdleGame() {
     setAndPersist((s) => advanceTutorialIntro(s));
   }, [setAndPersist]);
 
+  const wizardAcceptFree = useCallback(() => {
+    setAndPersist((s) => {
+      const t = Date.now();
+      return acceptWizardHelpFree(s, t);
+    });
+  }, [setAndPersist]);
+
+  const wizardDismissOffer = useCallback(() => {
+    setAndPersist((s) => {
+      const t = Date.now();
+      return dismissWizardOffer(s, t);
+    });
+  }, [setAndPersist]);
+
+  const tryPayWizardReturn = useCallback((): boolean => {
+    let ok = false;
+    setState((s) => {
+      if (!s) return s;
+      const t = Date.now();
+      setNow(t);
+      const base = advanceStateToNow(s, t, Math.random);
+      const paid = payWizardForHelp(base, t);
+      if (paid) {
+        ok = true;
+        return advanceStateToNow(paid, t, Math.random);
+      }
+      return base;
+    });
+    return ok;
+  }, []);
+
+  const spendEnchantedOnPath = useCallback(
+    (path: ArcanePathId) => {
+      setAndPersist((s) => {
+        const t = Date.now();
+        return spendEnchantedCarrotOnPath(s, path, t) ?? s;
+      });
+    },
+    [setAndPersist],
+  );
+
   const nextPlotCost =
     effectiveState != null
       ? plotPurchaseCost(effectiveState.plots.length)
@@ -134,10 +184,13 @@ export function useIdleGame() {
     nextWorkerCost != null &&
     effectiveState.gold >= nextWorkerCost;
 
+  const growMsEffective =
+    effectiveState != null ? carrotGrowMs(effectiveState) : GROW_MS;
+
   return {
     state: effectiveState,
     now,
-    growMs: GROW_MS,
+    growMs: growMsEffective,
     harvest,
     pickCropForPlot,
     buyNextPlot,
@@ -148,5 +201,9 @@ export function useIdleGame() {
     canAffordNextWorker,
     resetKingdom,
     tutorialNext,
+    wizardAcceptFree,
+    wizardDismissOffer,
+    tryPayWizardReturn,
+    spendEnchantedOnPath,
   };
 }

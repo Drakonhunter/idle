@@ -1,5 +1,46 @@
 export type CropId = "carrot";
 
+/** Arcane tract: three mutually exclusive boosts, each bought with one enchanted carrot. */
+export type ArcanePathId = "growth" | "saleGold" | "cheaperWages";
+
+export type ArcanePathUpgrades = Record<ArcanePathId, boolean>;
+
+export type ArcaneState = {
+  /** Wizard intro was closed with “not now” (can pay later). */
+  wizardOfferDismissed: boolean;
+  /** Accepted the wizard’s help for free at the offer. */
+  wizardHelpFree: boolean;
+  /** Paid 1000g to unlock after refusing the first offer. */
+  wizardHelpPaid: boolean;
+  /** First arcane node: random enchanted drops from carrot harvests. */
+  enchantedHarvestUnlocked: boolean;
+  /** After unlocking the node, the next carrot harvest is always enchanted once. */
+  nextCarrotHarvestIsEnchanted: boolean;
+  /** Spent on path upgrades (each costs 1 enchanted carrot). */
+  enchantedCarrotsInventory: number;
+  pathUpgrades: ArcanePathUpgrades;
+};
+
+export const ARCANE_WIZARD_RETURN_COST = 1000;
+/** Chance for a carrot harvest to yield an enchanted carrot after the node is unlocked (after the guaranteed first). */
+export const ARCANE_ENCHANTED_DROP_CHANCE = 0.01;
+
+export function defaultArcaneState(): ArcaneState {
+  return {
+    wizardOfferDismissed: false,
+    wizardHelpFree: false,
+    wizardHelpPaid: false,
+    enchantedHarvestUnlocked: false,
+    nextCarrotHarvestIsEnchanted: false,
+    enchantedCarrotsInventory: 0,
+    pathUpgrades: {
+      growth: false,
+      saleGold: false,
+      cheaperWages: false,
+    },
+  };
+}
+
 export type PlotState =
   | { kind: "empty" }
   | { kind: "growing"; crop: CropId; plantedAt: number }
@@ -41,7 +82,7 @@ export type TutorialState = {
 };
 
 export type GameState = {
-  version: 6;
+  version: 7;
   gold: number;
   plots: PlotState[];
   /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */
@@ -52,6 +93,7 @@ export type GameState = {
   plotSelectedCrops: (CropId | null)[];
   stats: HarvestStats;
   tutorial: TutorialState;
+  arcane: ArcaneState;
   lastSavedAt: number;
 };
 

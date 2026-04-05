@@ -1,19 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { ArcaneTractPanel } from "@/components/ArcaneTractPanel";
 import { FarmPlot } from "@/components/FarmPlot";
 import { TutorialModal } from "@/components/TutorialModal";
 import { TutorialOneParcelPanel } from "@/components/TutorialPanel";
+import { WizardArcaneModal } from "@/components/WizardArcaneModal";
 import { useIdleGame } from "@/hooks/useIdleGame";
+import {
+  arcaneTractUnlocked,
+  canShowWizardOffer,
+  manualCarrotHarvestGold,
+  workerCarrotHarvestGold,
+} from "@/lib/game/arcane";
 import {
   plotInteraction,
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
-import {
-  MANUAL_HARVEST_GOLD,
-  WORKER_WAGE_PER_CARROT,
-} from "@/lib/game/types";
+import { WORKER_WAGE_PER_CARROT } from "@/lib/game/types";
 import styles from "./page.module.css";
 
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {
@@ -68,9 +73,13 @@ function tutorialBanner(step: TutorialStep): { title: string; body: string } | n
 
 export default function Home() {
   const [statsOpen, setStatsOpen] = useState(false);
+  const [wizardModal, setWizardModal] = useState<"initial" | "return" | null>(
+    null,
+  );
   const {
     state,
     now,
+    growMs,
     harvest,
     pickCropForPlot,
     buyNextPlot,
@@ -81,6 +90,10 @@ export default function Home() {
     canAffordNextWorker,
     resetKingdom,
     tutorialNext,
+    wizardAcceptFree,
+    wizardDismissOffer,
+    tryPayWizardReturn,
+    spendEnchantedOnPath,
   } = useIdleGame();
 
   if (!state) {
@@ -108,13 +121,52 @@ export default function Home() {
   const { manualCarrotsTotal, workerCarrotsTotal, workerWagesTotalPaid } =
     state.stats;
   const totalCarrots = manualCarrotsTotal + workerCarrotsTotal;
-  const grossGoldFromCarrots = totalCarrots * MANUAL_HARVEST_GOLD;
+  const manualGoldEach = manualCarrotHarvestGold(state);
+  const workerGoldEach = workerCarrotHarvestGold(state);
+  const grossGoldFromCarrots =
+    manualCarrotsTotal * manualGoldEach + workerCarrotsTotal * workerGoldEach;
   const profitGoldFromCarrots = grossGoldFromCarrots - workerWagesTotalPaid;
+  const arcaneOpen = arcaneTractUnlocked(state);
+  const showWizardInitialModal =
+    tut.complete &&
+    wizardModal !== "return" &&
+    wizardModal == null &&
+    canShowWizardOffer(state);
 
   return (
     <main className={styles.page}>
       {!tut.complete ? (
         <TutorialModal step={tut.step} onNext={tutorialNext} />
+      ) : null}
+
+      {showWizardInitialModal ? (
+        <WizardArcaneModal
+          mode="initial_offer"
+          state={state}
+          onAcceptFree={() => {
+            wizardAcceptFree();
+            setWizardModal(null);
+          }}
+          onDismiss={() => {
+            wizardDismissOffer();
+            setWizardModal(null);
+          }}
+          onPayReturn={() => {}}
+        />
+      ) : null}
+
+      {tut.complete && wizardModal === "return" ? (
+        <WizardArcaneModal
+          mode="return_offer"
+          state={state}
+          onAcceptFree={() => {}}
+          onDismiss={() => setWizardModal(null)}
+          onPayReturn={() => {
+            if (tryPayWizardReturn()) {
+              setWizardModal(null);
+            }
+          }}
+        />
       ) : null}
 
       <header className={styles.header} inert={!tut.complete ? true : undefined}>
@@ -166,9 +218,9 @@ export default function Home() {
             {statsOpen ? (
               <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
                 <p className={styles.statsHint}>
-                  Every carrot sells for {MANUAL_HARVEST_GOLD} gold at market (gross). Field hands take{" "}
-                  {WORKER_WAGE_PER_CARROT} gold in wages per carrot they sell — what is left is profit to the treasury.
-                  When you harvest yourself, the crown keeps the full sale.
+                  Your harvests pay {manualGoldEach} gold per carrot into the treasury. Field hands remit{" "}
+                  {workerGoldEach} gold per carrot; wages are tracked separately in the ledger. Arcane upgrades can
+                  change these amounts.
                 </p>
                 <dl className={styles.statsGrid}>
                   <div className={styles.statsRow}>
@@ -195,6 +247,12 @@ export default function Home() {
                     <dt>Profit to treasury (from carrots)</dt>
                     <dd>{Math.floor(profitGoldFromCarrots)} gold</dd>
                   </div>
+                  {arcaneOpen ? (
+                    <div className={styles.statsRow}>
+                      <dt>Enchanted carrots (vault)</dt>
+                      <dd>{state.arcane.enchantedCarrotsInventory}</dd>
+                    </div>
+                  ) : null}
                 </dl>
               </div>
             ) : null}
@@ -221,6 +279,7 @@ export default function Home() {
                 plotIndex={i}
                 plot={plot}
                 now={now}
+                growMs={growMs}
                 selectedCrop={state.plotSelectedCrops[i] ?? null}
                 hasWorker={state.plotWorkers[i] ?? false}
                 workerHireCost={nextWorkerCost}
@@ -289,7 +348,7 @@ export default function Home() {
         </div>
 
         <div className={styles.roadmap} inert={!tut.complete ? true : undefined}>
-          <p className={styles.roadmapTitle}>Coming later</p>
+          <p className={styles.roadmapTitle}>Realm paths</p>
           <div className={styles.tracts}>
             <span className={`${styles.tract} ${styles.tractActive}`}>
               🌻 Farming
@@ -297,10 +356,19 @@ export default function Home() {
             <span className={`${styles.tract} ${styles.tractSoon}`}>
               🛡️ Military (soon)
             </span>
-            <span className={`${styles.tract} ${styles.tractSoon}`}>
-              ✨ Arcane (soon)
+            <span
+              className={`${styles.tract} ${arcaneOpen ? styles.tractArcane : styles.tractSoon}`}
+            >
+              {arcaneOpen ? "✨ Arcane" : "✨ Arcane (locked)"}
             </span>
           </div>
+          {tut.complete ? (
+            <ArcaneTractPanel
+              state={state}
+              onOpenWizardReturn={() => setWizardModal("return")}
+              onSpendEnchanted={spendEnchantedOnPath}
+            />
+          ) : null}
         </div>
       </div>
 

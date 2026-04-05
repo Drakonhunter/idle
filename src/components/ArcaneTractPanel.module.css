@@ -1,0 +1,184 @@
+.wrap {
+  margin-top: 1rem;
+  padding: 0.85rem 0.75rem;
+  border-radius: 14px;
+  border: 2px solid #7c3aed;
+  background: linear-gradient(180deg, rgba(250, 245, 255, 0.95), rgba(237, 233, 254, 0.88));
+  box-shadow: 0 3px 0 rgba(91, 33, 182, 0.25);
+}
+
+.sectionKicker {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #5b21b6;
+  text-align: center;
+}
+
+.locked {
+  text-align: center;
+}
+
+.lockedBody {
+  margin: 0 0 0.65rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.45;
+  opacity: 0.9;
+}
+
+.btnWizard {
+  border: 3px solid #5e3d7a;
+  border-radius: 12px;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  font-weight: 900;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: linear-gradient(180deg, #d8b4fe, #a855f7);
+  box-shadow: 0 3px 0 #5e3d7a;
+  color: #1a0a24;
+}
+
+.btnWizard:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnWizard:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #5e3d7a;
+}
+
+.statusCard {
+  margin-bottom: 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 2px dashed rgba(91, 33, 182, 0.35);
+}
+
+.statusLine {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.sparkle {
+  font-size: 1rem;
+}
+
+.statusHint {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.4;
+  opacity: 0.82;
+  text-align: center;
+}
+
+.pathsTitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.pathsSub {
+  margin: 0 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  opacity: 0.8;
+  text-align: center;
+}
+
+.pathList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.pathCard {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  border: 2px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.pathHead {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.pathEmoji {
+  font-size: 1.1rem;
+}
+
+.pathTitle {
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.pathDesc {
+  margin: 0 0 0.45rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.4;
+  opacity: 0.88;
+}
+
+.btnPath {
+  width: 100%;
+  border: 2px solid #5b21b6;
+  border-radius: 10px;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ede9fe, #ddd6fe);
+  color: #1e1b4b;
+}
+
+.btnPath:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.badgeActive {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #bbf7d0, #86efac);
+  border: 2px solid #166534;
+  color: #14532d;
+}
+
+.badgeLocked {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(120, 113, 108, 0.15);
+  border: 2px dashed rgba(87, 83, 78, 0.45);
+  color: #44403c;
+}

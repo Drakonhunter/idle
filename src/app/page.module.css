@@ -257,6 +257,12 @@
   opacity: 0.55;
 }
 
+.tractArcane {
+  background: linear-gradient(180deg, #ede9fe, #c4b5fd);
+  border-color: #6d28d9;
+  color: #1e1b4b;
+}
+
 .footer {
   margin-top: 1rem;
   text-align: center;

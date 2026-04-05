@@ -1,5 +1,16 @@
-import type { CropId, GameState, PlotState } from "./types";
-import { WORKER_WAGE_PER_CARROT } from "./types";
+import type {
+  CropId,
+  GameState,
+  HarvestStats,
+  PlotState,
+  TutorialState,
+} from "./types";
+import {
+  WORKER_WAGE_PER_CARROT,
+  defaultArcaneState,
+  type ArcaneState,
+  type ArcanePathId,
+} from "./types";
 import { SAVE_KEY } from "./types";
 import {
   advanceStateToNow,
@@ -7,7 +18,7 @@ import {
   createInitialState,
 } from "./state";
 
-const CURRENT_SAVE_VERSION = 6 as const;
+const CURRENT_SAVE_VERSION = 7 as const;
 
 type LegacyV1Plot =
   | { kind: "empty" }
@@ -54,6 +65,17 @@ type LegacyV5State = {
   plots: PlotState[];
   plotWorkers: boolean[];
   plotSelectedCrops: (CropId | null)[];
+  lastSavedAt: number;
+};
+
+type LegacyV6State = {
+  version: 6;
+  gold: number;
+  plots: PlotState[];
+  plotWorkers: boolean[];
+  plotSelectedCrops: (CropId | null)[];
+  stats: HarvestStats;
+  tutorial: TutorialState;
   lastSavedAt: number;
 };
 
@@ -159,7 +181,7 @@ function migrateV4ToV5(parsed: LegacyV4State): LegacyV5State {
 }
 
 /** v5 → v6: harvest stats + tutorial; existing saves skip the guided intro. */
-function migrateV5ToV6(parsed: LegacyV5State): GameState {
+function migrateV5ToV6(parsed: LegacyV5State): LegacyV6State {
   const plots = parsed.plots;
   const plotWorkers = alignPlotWorkers(plots, parsed.plotWorkers);
   const plotSelectedCrops = alignSelectedCropsV5(
@@ -175,6 +197,15 @@ function migrateV5ToV6(parsed: LegacyV5State): GameState {
     stats: createFreshStats(plots.length),
     tutorial: { complete: true, step: "done" },
     lastSavedAt: Number(parsed.lastSavedAt) || 0,
+  };
+}
+
+/** v6 → v7: arcane tract state (wizard, enchanted carrots, path upgrades). */
+function migrateV6ToV7(parsed: LegacyV6State): GameState {
+  return {
+    ...parsed,
+    version: 7,
+    arcane: defaultArcaneState(),
   };
 }
 
@@ -217,6 +248,12 @@ function migrateSaveTowardCurrent(
       version = 6;
       continue;
     }
+    if (version === 6) {
+      const next = migrateV6ToV7(data as unknown as LegacyV6State);
+      data = { ...next } as unknown as Record<string, unknown>;
+      version = 7;
+      continue;
+    }
     return null;
   }
 
@@ -237,15 +274,17 @@ function migrateSaveTowardCurrent(
   const stats = normalizeHarvestStats(rawStats, plotCount);
   const rawTutorial = data.tutorial as TutorialLike | undefined;
   const tutorial = normalizeTutorial(rawTutorial);
+  const arcane = normalizeArcane(data.arcane as ArcaneLike | undefined);
 
   return {
-    version: 6,
+    version: 7,
     gold: Number(data.gold) || 0,
     plots,
     plotWorkers,
     plotSelectedCrops,
     stats,
     tutorial,
+    arcane,
     lastSavedAt: Number(data.lastSavedAt) || 0,
   };
 }
@@ -262,6 +301,40 @@ type TutorialLike = {
   complete?: unknown;
   step?: unknown;
 };
+
+type ArcaneLike = {
+  wizardOfferDismissed?: unknown;
+  wizardHelpFree?: unknown;
+  wizardHelpPaid?: unknown;
+  enchantedHarvestUnlocked?: unknown;
+  nextCarrotHarvestIsEnchanted?: unknown;
+  enchantedCarrotsInventory?: unknown;
+  pathUpgrades?: unknown;
+};
+
+const ARCANE_PATH_IDS: ArcanePathId[] = ["growth", "saleGold", "cheaperWages"];
+
+function normalizeArcane(raw: ArcaneLike | undefined): ArcaneState {
+  const base = defaultArcaneState();
+  if (!raw || typeof raw !== "object") return base;
+  const pathUpgrades = { ...base.pathUpgrades };
+  if (raw.pathUpgrades && typeof raw.pathUpgrades === "object") {
+    const pu = raw.pathUpgrades as Record<string, unknown>;
+    for (const id of ARCANE_PATH_IDS) {
+      if (pu[id] === true) pathUpgrades[id] = true;
+    }
+  }
+  const inv = Number(raw.enchantedCarrotsInventory);
+  return {
+    wizardOfferDismissed: Boolean(raw.wizardOfferDismissed),
+    wizardHelpFree: Boolean(raw.wizardHelpFree),
+    wizardHelpPaid: Boolean(raw.wizardHelpPaid),
+    enchantedHarvestUnlocked: Boolean(raw.enchantedHarvestUnlocked),
+    nextCarrotHarvestIsEnchanted: Boolean(raw.nextCarrotHarvestIsEnchanted),
+    enchantedCarrotsInventory: Number.isFinite(inv) ? Math.max(0, Math.floor(inv)) : 0,
+    pathUpgrades,
+  };
+}
 
 function normalizeHarvestStats(
   raw: HarvestStatsLike | undefined,

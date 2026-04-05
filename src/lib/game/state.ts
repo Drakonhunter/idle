@@ -1,16 +1,25 @@
 import {
+  type ArcanePathId,
   type CropId,
   type GameState,
   type HarvestStats,
   type PlotState,
-  GROW_MS,
-  MANUAL_HARVEST_GOLD,
-  WORKER_HARVEST_GOLD,
-  WORKER_WAGE_PER_CARROT,
+  ARCANE_WIZARD_RETURN_COST,
+  defaultArcaneState,
   nextWorkerHireCost,
   STARTING_GOLD,
   STARTING_PLOT_COUNT,
 } from "./types";
+import {
+  applyEnchantedDrop,
+  arcaneTractUnlocked,
+  canPayWizardReturn,
+  carrotGrowMs,
+  manualCarrotHarvestGold,
+  rollEnchantedCarrotHarvest,
+  workerCarrotHarvestGold,
+  workerCarrotWageAmount,
+} from "./arcane";
 import { isIntroModalStep, nextIntroStep, tutorialReconcileState } from "./tutorial";
 
 function freshPlots(count: number): PlotState[] {
@@ -75,6 +84,7 @@ function recordWorkerCarrotHarvest(
   stats: HarvestStats,
   plotIndex: number,
   plotCount: number,
+  wageForThisCarrot: number,
 ): HarvestStats {
   const manualCarrotsPerPlot = alignPerPlotCounts(stats.manualCarrotsPerPlot, plotCount);
   const workerCarrotsPerPlot = alignPerPlotCounts(stats.workerCarrotsPerPlot, plotCount);
@@ -83,7 +93,7 @@ function recordWorkerCarrotHarvest(
   return {
     manualCarrotsTotal: stats.manualCarrotsTotal,
     workerCarrotsTotal: stats.workerCarrotsTotal + 1,
-    workerWagesTotalPaid: stats.workerWagesTotalPaid + WORKER_WAGE_PER_CARROT,
+    workerWagesTotalPaid: stats.workerWagesTotalPaid + wageForThisCarrot,
     manualCarrotsPerPlot,
     workerCarrotsPerPlot: nextW,
   };
@@ -101,24 +111,25 @@ function finalizeTutorial(state: GameState): GameState {
 export function createInitialState(now: number): GameState {
   const n = STARTING_PLOT_COUNT;
   return finalizeTutorial({
-    version: 6,
+    version: 7,
     gold: STARTING_GOLD,
     plots: freshPlots(n),
     plotWorkers: freshWorkerSlots(n),
     plotSelectedCrops: freshSelectedCrops(n),
     stats: createFreshStats(n),
     tutorial: { complete: false, step: "welcome" },
+    arcane: defaultArcaneState(),
     lastSavedAt: now,
   });
 }
 
-function advanceGrowing(plot: PlotState, now: number): PlotState {
+function advanceGrowing(plot: PlotState, now: number, growMs: number): PlotState {
   if (plot.kind !== "growing") return plot;
-  if (now >= plot.plantedAt + GROW_MS) {
+  if (now >= plot.plantedAt + growMs) {
     return {
       kind: "ready",
       crop: plot.crop,
-      ripenedAt: plot.plantedAt + GROW_MS,
+      ripenedAt: plot.plantedAt + growMs,
     };
   }
   return plot;
@@ -139,23 +150,33 @@ const MAX_ADVANCE_ITERATIONS = 2_000_000;
  * One deterministic pass toward `targetNow`: worker harvest replants at the simulated
  * harvest-finish time (not wall `targetNow`) so multi-cycle offline catch-up is correct.
  */
-function advanceSinglePass(state: GameState, targetNow: number): GameState {
+function advanceSinglePass(
+  state: GameState,
+  targetNow: number,
+  random: () => number,
+): GameState {
   let gold = state.gold;
   let stats = state.stats;
+  let arcane = state.arcane;
   const plotCount = state.plots.length;
+  const growMs = carrotGrowMs(state);
   const plots = state.plots.map((plot, i) => {
-    const p = advanceGrowing(plot, targetNow);
+    const p = advanceGrowing(plot, targetNow, growMs);
     const selected = cropForPlot(state, i);
     if (
       p.kind === "ready" &&
       state.plotWorkers[i] &&
-      targetNow >= p.ripenedAt + GROW_MS
+      targetNow >= p.ripenedAt + growMs
     ) {
-      gold += WORKER_HARVEST_GOLD;
+      const slice = { ...state, arcane };
+      gold += workerCarrotHarvestGold(slice);
       if (p.crop === "carrot") {
-        stats = recordWorkerCarrotHarvest(stats, i, plotCount);
+        const roll = rollEnchantedCarrotHarvest(arcane, random());
+        arcane = applyEnchantedDrop(roll.arcane, roll.enchanted);
+        const wage = workerCarrotWageAmount({ ...state, arcane });
+        stats = recordWorkerCarrotHarvest(stats, i, plotCount, wage);
       }
-      const harvestDoneAt = p.ripenedAt + GROW_MS;
+      const harvestDoneAt = p.ripenedAt + growMs;
       if (selected != null) {
         return startGrowing(selected, harvestDoneAt);
       }
@@ -169,6 +190,7 @@ function advanceSinglePass(state: GameState, targetNow: number): GameState {
   const unchanged =
     gold === state.gold &&
     stats === state.stats &&
+    arcane === state.arcane &&
     plots.length === state.plots.length &&
     plots.every((pl, i) => pl === state.plots[i]);
   if (unchanged) {
@@ -178,6 +200,7 @@ function advanceSinglePass(state: GameState, targetNow: number): GameState {
     ...state,
     gold,
     stats,
+    arcane,
     plots,
     lastSavedAt: state.lastSavedAt,
   };
@@ -187,11 +210,15 @@ function advanceSinglePass(state: GameState, targetNow: number): GameState {
  * Worker completes harvest GROW_MS after the crop becomes ripe; manual harvest is instant.
  * Empty plots only grow when the player has assigned a crop.
  */
-export function advanceStateToNow(state: GameState, targetNow: number): GameState {
+export function advanceStateToNow(
+  state: GameState,
+  targetNow: number,
+  random: () => number = Math.random,
+): GameState {
   const aligned = ensureStatsForPlots(state);
   let current = aligned;
   for (let n = 0; n < MAX_ADVANCE_ITERATIONS; n++) {
-    const next = advanceSinglePass(current, targetNow);
+    const next = advanceSinglePass(current, targetNow, random);
     if (next === current) break;
     current = next;
   }
@@ -208,6 +235,7 @@ export function harvestPlot(
   state: GameState,
   plotIndex: number,
   now: number,
+  random: () => number = Math.random,
 ): GameState | null {
   const base = ensureStatsForPlots(state);
   const plot = base.plots[plotIndex];
@@ -217,18 +245,24 @@ export function harvestPlot(
   nextPlots[plotIndex] =
     selected != null ? startGrowing(selected, now) : { kind: "empty" };
   let stats = base.stats;
+  let arcane = base.arcane;
   if (plot.crop === "carrot") {
+    const roll = rollEnchantedCarrotHarvest(arcane, random());
+    arcane = applyEnchantedDrop(roll.arcane, roll.enchanted);
     stats = recordManualCarrotHarvest(stats, plotIndex, base.plots.length);
   }
+  const goldGain = manualCarrotHarvestGold({ ...base, arcane });
   const after = advanceStateToNow(
     {
       ...base,
-      gold: base.gold + MANUAL_HARVEST_GOLD,
+      gold: base.gold + goldGain,
       stats,
+      arcane,
       plots: nextPlots,
       lastSavedAt: now,
     },
     now,
+    random,
   );
   return after;
 }
@@ -317,6 +351,67 @@ export function hireWorkerForPlot(
     },
     now,
   );
+}
+
+export function acceptWizardHelpFree(state: GameState, now: number): GameState {
+  if (arcaneTractUnlocked(state)) return state;
+  return {
+    ...state,
+    arcane: {
+      ...state.arcane,
+      wizardOfferDismissed: true,
+      wizardHelpFree: true,
+      enchantedHarvestUnlocked: true,
+      nextCarrotHarvestIsEnchanted: true,
+    },
+    lastSavedAt: now,
+  };
+}
+
+export function dismissWizardOffer(state: GameState, now: number): GameState {
+  return {
+    ...state,
+    arcane: {
+      ...state.arcane,
+      wizardOfferDismissed: true,
+    },
+    lastSavedAt: now,
+  };
+}
+
+export function payWizardForHelp(state: GameState, now: number): GameState | null {
+  if (!canPayWizardReturn(state)) return null;
+  if (state.gold < ARCANE_WIZARD_RETURN_COST) return null;
+  return {
+    ...state,
+    gold: state.gold - ARCANE_WIZARD_RETURN_COST,
+    arcane: {
+      ...state.arcane,
+      wizardHelpPaid: true,
+      enchantedHarvestUnlocked: true,
+      nextCarrotHarvestIsEnchanted: true,
+    },
+    lastSavedAt: now,
+  };
+}
+
+export function spendEnchantedCarrotOnPath(
+  state: GameState,
+  path: ArcanePathId,
+  now: number,
+): GameState | null {
+  if (state.arcane.enchantedCarrotsInventory < 1) return null;
+  if (state.arcane.pathUpgrades[path]) return null;
+  if (Object.values(state.arcane.pathUpgrades).some(Boolean)) return null;
+  return {
+    ...state,
+    arcane: {
+      ...state.arcane,
+      enchantedCarrotsInventory: state.arcane.enchantedCarrotsInventory - 1,
+      pathUpgrades: { ...state.arcane.pathUpgrades, [path]: true },
+    },
+    lastSavedAt: now,
+  };
 }
 
 export function advanceTutorialIntro(state: GameState): GameState {
