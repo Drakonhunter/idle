@@ -1,4 +1,5 @@
 import type { CropId, GameState, PlotState } from "./types";
+import { WORKER_WAGE_PER_CARROT } from "./types";
 import { SAVE_KEY } from "./types";
 import {
   advanceStateToNow,
@@ -252,6 +253,7 @@ function migrateSaveTowardCurrent(
 type HarvestStatsLike = {
   manualCarrotsTotal?: unknown;
   workerCarrotsTotal?: unknown;
+  workerWagesTotalPaid?: unknown;
   manualCarrotsPerPlot?: unknown;
   workerCarrotsPerPlot?: unknown;
 };
@@ -269,15 +271,25 @@ function normalizeHarvestStats(
   if (!raw || typeof raw !== "object") return base;
   const manualTotal = Number(raw.manualCarrotsTotal);
   const workerTotal = Number(raw.workerCarrotsTotal);
+  const wagesRaw = Number(raw.workerWagesTotalPaid);
   const mArr = Array.isArray(raw.manualCarrotsPerPlot)
     ? raw.manualCarrotsPerPlot.map((n) => Number(n) || 0)
     : [];
   const wArr = Array.isArray(raw.workerCarrotsPerPlot)
     ? raw.workerCarrotsPerPlot.map((n) => Number(n) || 0)
     : [];
+  const workerCarrotsTotalNorm = Number.isFinite(workerTotal)
+    ? Math.max(0, workerTotal)
+    : 0;
+  const wagesFromSave = Number.isFinite(wagesRaw) ? Math.max(0, wagesRaw) : null;
+  const workerWagesTotalPaid =
+    wagesFromSave != null
+      ? wagesFromSave
+      : workerCarrotsTotalNorm * WORKER_WAGE_PER_CARROT;
   return {
     manualCarrotsTotal: Number.isFinite(manualTotal) ? Math.max(0, manualTotal) : 0,
-    workerCarrotsTotal: Number.isFinite(workerTotal) ? Math.max(0, workerTotal) : 0,
+    workerCarrotsTotal: workerCarrotsTotalNorm,
+    workerWagesTotalPaid,
     manualCarrotsPerPlot: alignPerPlotCounts(mArr, plotCount),
     workerCarrotsPerPlot: alignPerPlotCounts(wArr, plotCount),
   };
@@ -299,6 +311,7 @@ const VALID_TUTORIAL_STEPS = new Set<string>([
   "plant_second_field",
   "save_for_worker",
   "hire_worker",
+  "tutorial_wrap_up",
   "done",
 ]);
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { FarmPlot } from "@/components/FarmPlot";
 import { TutorialModal } from "@/components/TutorialModal";
 import { TutorialOneParcelPanel } from "@/components/TutorialPanel";
@@ -9,7 +10,10 @@ import {
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
-import { MANUAL_HARVEST_GOLD, WORKER_HARVEST_GOLD } from "@/lib/game/types";
+import {
+  MANUAL_HARVEST_GOLD,
+  WORKER_WAGE_PER_CARROT,
+} from "@/lib/game/types";
 import styles from "./page.module.css";
 
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {
@@ -46,14 +50,16 @@ function tutorialBanner(step: TutorialStep): { title: string; body: string } | n
         title: "Dreamy field hands",
         body:
           "Keep farming! When you have enough gold, you can hire a helper who auto-harvests after each ripe crop. " +
-          "The + hire button stays sleepy until the treasury is ready.",
+          "Fair wages come out of each sale, so the treasury keeps a bit less per carrot than when you harvest yourself — " +
+          "but hands never sleep. The + hire button stays sleepy until the treasury is ready.",
       };
     case "hire_worker":
       return {
         title: "Hire your first hand",
         body:
-          "Tap the + on either field to hire the next available worker. They collect a little less gold per carrot than you do — " +
-          "but they never get tired. Fancy!",
+          "Tap the + on either field to hire the next available worker. Their fair wage is " +
+          `${WORKER_WAGE_PER_CARROT} gold per carrot from the sale — so the crown still profits, just a little less than when you pick them yourself. ` +
+          "They never get tired. Fancy!",
       };
     default:
       return null;
@@ -61,6 +67,7 @@ function tutorialBanner(step: TutorialStep): { title: string; body: string } | n
 }
 
 export default function Home() {
+  const [statsOpen, setStatsOpen] = useState(false);
   const {
     state,
     now,
@@ -97,6 +104,12 @@ export default function Home() {
   const pulseBuyField = !tut.complete && tut.step === "buy_field" && canBuyPlot;
   const uiLock = tutorialUiLock(tut.step, tut.complete);
   const buyFieldDisabled = !canBuyPlot || (!tut.complete && !uiLock.allowBuyField);
+
+  const { manualCarrotsTotal, workerCarrotsTotal, workerWagesTotalPaid } =
+    state.stats;
+  const totalCarrots = manualCarrotsTotal + workerCarrotsTotal;
+  const grossGoldFromCarrots = totalCarrots * MANUAL_HARVEST_GOLD;
+  const profitGoldFromCarrots = grossGoldFromCarrots - workerWagesTotalPaid;
 
   return (
     <main className={styles.page}>
@@ -139,6 +152,54 @@ export default function Home() {
             </span>
           ) : null}
         </div>
+
+        {tut.complete ? (
+          <div className={styles.statsBlock}>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnSecondary} ${styles.statsToggle}`}
+              onClick={() => setStatsOpen((o) => !o)}
+              aria-expanded={statsOpen}
+            >
+              {statsOpen ? "Hide kingdom stats" : "Kingdom stats"}
+            </button>
+            {statsOpen ? (
+              <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
+                <p className={styles.statsHint}>
+                  Every carrot sells for {MANUAL_HARVEST_GOLD} gold at market (gross). Field hands take{" "}
+                  {WORKER_WAGE_PER_CARROT} gold in wages per carrot they sell — what is left is profit to the treasury.
+                  When you harvest yourself, the crown keeps the full sale.
+                </p>
+                <dl className={styles.statsGrid}>
+                  <div className={styles.statsRow}>
+                    <dt>Carrots you harvested</dt>
+                    <dd>{manualCarrotsTotal}</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Carrots field hands harvested</dt>
+                    <dd>{workerCarrotsTotal}</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Total carrots collected</dt>
+                    <dd>{totalCarrots}</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Gross gold from carrot sales</dt>
+                    <dd>{grossGoldFromCarrots} gold</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Total wages paid</dt>
+                    <dd>{Math.floor(workerWagesTotalPaid)} gold</dd>
+                  </div>
+                  <div className={styles.statsRow}>
+                    <dt>Profit to treasury (from carrots)</dt>
+                    <dd>{Math.floor(profitGoldFromCarrots)} gold</dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {tut.step === "one_parcel" ? <TutorialOneParcelPanel onNext={tutorialNext} /> : null}
 

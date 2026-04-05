@@ -6,6 +6,7 @@ import {
   GROW_MS,
   MANUAL_HARVEST_GOLD,
   WORKER_HARVEST_GOLD,
+  WORKER_WAGE_PER_CARROT,
   nextWorkerHireCost,
   STARTING_GOLD,
   STARTING_PLOT_COUNT,
@@ -28,6 +29,7 @@ export function createFreshStats(plotCount: number): HarvestStats {
   return {
     manualCarrotsTotal: 0,
     workerCarrotsTotal: 0,
+    workerWagesTotalPaid: 0,
     manualCarrotsPerPlot: Array.from({ length: plotCount }, () => 0),
     workerCarrotsPerPlot: Array.from({ length: plotCount }, () => 0),
   };
@@ -63,6 +65,7 @@ function recordManualCarrotHarvest(
   return {
     manualCarrotsTotal: stats.manualCarrotsTotal + 1,
     workerCarrotsTotal: stats.workerCarrotsTotal,
+    workerWagesTotalPaid: stats.workerWagesTotalPaid,
     manualCarrotsPerPlot: nextM,
     workerCarrotsPerPlot,
   };
@@ -80,6 +83,7 @@ function recordWorkerCarrotHarvest(
   return {
     manualCarrotsTotal: stats.manualCarrotsTotal,
     workerCarrotsTotal: stats.workerCarrotsTotal + 1,
+    workerWagesTotalPaid: stats.workerWagesTotalPaid + WORKER_WAGE_PER_CARROT,
     manualCarrotsPerPlot,
     workerCarrotsPerPlot: nextW,
   };
@@ -276,6 +280,7 @@ export function buyPlot(
       base.stats.workerCarrotsPerPlot,
       newCount,
     ),
+    workerWagesTotalPaid: base.stats.workerWagesTotalPaid,
   };
   return advanceStateToNow(
     {
@@ -318,6 +323,12 @@ export function advanceTutorialIntro(state: GameState): GameState {
   const t = state.tutorial;
   if (t.complete) return state;
   const s = t.step;
+  if (s === "tutorial_wrap_up") {
+    return finalizeTutorial({
+      ...state,
+      tutorial: { complete: true, step: "done" },
+    });
+  }
   if (s !== "welcome" && s !== "one_parcel" && s !== "crop_menu_intro") {
     return state;
   }

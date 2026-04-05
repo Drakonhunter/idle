@@ -193,11 +193,7 @@ export function FarmPlot({
           className={`${styles.plot} ${ready && interaction.harvest ? styles.readyPulse : ""}`}
           onClick={handleHarvest}
           disabled={!ready || !interaction.harvest}
-          aria-label={
-            ready
-              ? "Click to harvest for bonus gold"
-              : "Crop growing"
-          }
+          aria-label={ready ? "Click to harvest (full sale to treasury)" : "Crop growing"}
         >
           <span className={styles.inner}>
             <span className={styles.emoji} aria-hidden>
@@ -205,7 +201,7 @@ export function FarmPlot({
             </span>
             <span className={styles.statusLine}>{status}</span>
             {ready && hasWorker && (
-              <span className={styles.workerHarvestHint}>Worker harvesting</span>
+              <span className={styles.workerHarvestHint}>Hand harvesting (wages from sale)</span>
             )}
             {growing && (
               <div
