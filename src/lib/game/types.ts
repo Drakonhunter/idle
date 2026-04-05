@@ -1,6 +1,6 @@
 export type CropId = "carrot";
 
-/** Arcane tract: three mutually exclusive boosts, each bought with one enchanted carrot. */
+/** Arcane tract: three trees; each root unlock costs one enchanted carrot. */
 export type ArcanePathId = "growth" | "saleGold" | "cheaperWages";
 
 export type ArcanePathUpgrades = Record<ArcanePathId, boolean>;

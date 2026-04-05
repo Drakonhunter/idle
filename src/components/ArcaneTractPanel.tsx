@@ -100,8 +100,9 @@ export function ArcaneTractPanel({
             </p>
             {a.enchantedHarvestUnlocked ? (
               <p className={styles.statusHint}>
-                Each carrot harvest has a {dropPct}% chance to yield an enchanted carrot (manual
-                or field hand). Spend them in any tree below.
+                Every carrot harvest still rolls a {dropPct}% chance for an enchanted carrot — manual
+                or field hand — even after all tree roots are unlocked. Rolls are independent, so dry
+                spells are normal. Spend extras in future tree tiers.
               </p>
             ) : null}
           </div>
