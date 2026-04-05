@@ -61,6 +61,8 @@ export type HarvestStats = {
   manualCarrotsPerPlot: number[];
   /** Per-plot worker carrot harvests. */
   workerCarrotsPerPlot: number[];
+  /** Lifetime enchanted carrots obtained from harvests (drops), before spending on trees. */
+  enchantedCarrotsTotal: number;
 };
 
 export type TutorialStep =
@@ -82,7 +84,7 @@ export type TutorialState = {
 };
 
 export type GameState = {
-  version: 7;
+  version: 8;
   gold: number;
   plots: PlotState[];
   /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */

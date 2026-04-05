@@ -46,7 +46,8 @@ const TREES: {
     root: {
       emoji: "🧑‍🌾",
       title: "Leaner payroll",
-      description: "10% less gold paid in field-hand wages per carrot they sell.",
+      description:
+        "Field-hand wages per carrot sold drop from 5 to 4 gold in the ledger (integer rounding makes a straight 10% cut invisible at this scale).",
     },
   },
 ];

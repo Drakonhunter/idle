@@ -36,8 +36,11 @@ export function workerCarrotHarvestGold(state: GameState): number {
 
 /** Wage deducted from ledger per worker-sold carrot (10% less with arcane wages path). */
 export function workerCarrotWageAmount(state: GameState): number {
-  const mult = state.arcane.pathUpgrades.cheaperWages ? 0.9 : 1;
-  return Math.max(0, Math.round(WORKER_WAGE_PER_CARROT * mult));
+  if (!state.arcane.pathUpgrades.cheaperWages) {
+    return WORKER_WAGE_PER_CARROT;
+  }
+  // Integer wages: round(5 × 0.9) stays 5 — use floor so a discount actually applies at small values.
+  return Math.max(0, Math.floor(WORKER_WAGE_PER_CARROT * 0.9));
 }
 
 export function canShowWizardOffer(state: GameState): boolean {

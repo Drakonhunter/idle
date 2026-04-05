@@ -41,6 +41,7 @@ export function createFreshStats(plotCount: number): HarvestStats {
     workerWagesTotalPaid: 0,
     manualCarrotsPerPlot: Array.from({ length: plotCount }, () => 0),
     workerCarrotsPerPlot: Array.from({ length: plotCount }, () => 0),
+    enchantedCarrotsTotal: 0,
   };
 }
 
@@ -77,6 +78,14 @@ function recordManualCarrotHarvest(
     workerWagesTotalPaid: stats.workerWagesTotalPaid,
     manualCarrotsPerPlot: nextM,
     workerCarrotsPerPlot,
+    enchantedCarrotsTotal: stats.enchantedCarrotsTotal,
+  };
+}
+
+function recordEnchantedCarrotFound(stats: HarvestStats): HarvestStats {
+  return {
+    ...stats,
+    enchantedCarrotsTotal: stats.enchantedCarrotsTotal + 1,
   };
 }
 
@@ -96,6 +105,7 @@ function recordWorkerCarrotHarvest(
     workerWagesTotalPaid: stats.workerWagesTotalPaid + wageForThisCarrot,
     manualCarrotsPerPlot,
     workerCarrotsPerPlot: nextW,
+    enchantedCarrotsTotal: stats.enchantedCarrotsTotal,
   };
 }
 
@@ -111,7 +121,7 @@ function finalizeTutorial(state: GameState): GameState {
 export function createInitialState(now: number): GameState {
   const n = STARTING_PLOT_COUNT;
   return finalizeTutorial({
-    version: 7,
+    version: 8,
     gold: STARTING_GOLD,
     plots: freshPlots(n),
     plotWorkers: freshWorkerSlots(n),
@@ -173,6 +183,9 @@ function advanceSinglePass(
       if (p.crop === "carrot") {
         const roll = rollEnchantedCarrotHarvest(arcane, random());
         arcane = applyEnchantedDrop(roll.arcane, roll.enchanted);
+        if (roll.enchanted) {
+          stats = recordEnchantedCarrotFound(stats);
+        }
         const wage = workerCarrotWageAmount({ ...state, arcane });
         stats = recordWorkerCarrotHarvest(stats, i, plotCount, wage);
       }
@@ -249,6 +262,9 @@ export function harvestPlot(
   if (plot.crop === "carrot") {
     const roll = rollEnchantedCarrotHarvest(arcane, random());
     arcane = applyEnchantedDrop(roll.arcane, roll.enchanted);
+    if (roll.enchanted) {
+      stats = recordEnchantedCarrotFound(stats);
+    }
     stats = recordManualCarrotHarvest(stats, plotIndex, base.plots.length);
   }
   const goldGain = manualCarrotHarvestGold({ ...base, arcane });

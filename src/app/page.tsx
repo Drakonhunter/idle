@@ -12,6 +12,7 @@ import {
   canShowWizardOffer,
   manualCarrotHarvestGold,
   workerCarrotHarvestGold,
+  workerCarrotWageAmount,
 } from "@/lib/game/arcane";
 import {
   plotInteraction,
@@ -118,8 +119,12 @@ export default function Home() {
   const uiLock = tutorialUiLock(tut.step, tut.complete);
   const buyFieldDisabled = !canBuyPlot || (!tut.complete && !uiLock.allowBuyField);
 
-  const { manualCarrotsTotal, workerCarrotsTotal, workerWagesTotalPaid } =
-    state.stats;
+  const {
+    manualCarrotsTotal,
+    workerCarrotsTotal,
+    workerWagesTotalPaid,
+    enchantedCarrotsTotal,
+  } = state.stats;
   const totalCarrots = manualCarrotsTotal + workerCarrotsTotal;
   const manualGoldEach = manualCarrotHarvestGold(state);
   const workerGoldEach = workerCarrotHarvestGold(state);
@@ -219,8 +224,9 @@ export default function Home() {
               <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
                 <p className={styles.statsHint}>
                   Your harvests pay {manualGoldEach} gold per carrot into the treasury. Field hands remit{" "}
-                  {workerGoldEach} gold per carrot; wages are tracked separately in the ledger. Arcane upgrades can
-                  change these amounts.
+                  {workerGoldEach} gold per carrot; the ledger records{" "}
+                  {workerCarrotWageAmount(state)} gold in wages per worker-sold carrot. Arcane upgrades can change
+                  these amounts.
                 </p>
                 <dl className={styles.statsGrid}>
                   <div className={styles.statsRow}>
@@ -248,10 +254,16 @@ export default function Home() {
                     <dd>{Math.floor(profitGoldFromCarrots)} gold</dd>
                   </div>
                   {arcaneOpen ? (
-                    <div className={styles.statsRow}>
-                      <dt>Enchanted carrots (vault)</dt>
-                      <dd>{state.arcane.enchantedCarrotsInventory}</dd>
-                    </div>
+                    <>
+                      <div className={styles.statsRow}>
+                        <dt>Enchanted carrots found (lifetime)</dt>
+                        <dd>{enchantedCarrotsTotal}</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Enchanted carrots in vault</dt>
+                        <dd>{state.arcane.enchantedCarrotsInventory}</dd>
+                      </div>
+                    </>
                   ) : null}
                 </dl>
               </div>
