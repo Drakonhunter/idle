@@ -9,6 +9,7 @@ import {
   nextWorkerHireCost,
   STARTING_GOLD,
   STARTING_PLOT_COUNT,
+  roundGold2,
 } from "./types";
 import {
   applyEnchantedDrop,
@@ -102,7 +103,9 @@ function recordWorkerCarrotHarvest(
   return {
     manualCarrotsTotal: stats.manualCarrotsTotal,
     workerCarrotsTotal: stats.workerCarrotsTotal + 1,
-    workerWagesTotalPaid: stats.workerWagesTotalPaid + wageForThisCarrot,
+    workerWagesTotalPaid: roundGold2(
+      stats.workerWagesTotalPaid + wageForThisCarrot,
+    ),
     manualCarrotsPerPlot,
     workerCarrotsPerPlot: nextW,
     enchantedCarrotsTotal: stats.enchantedCarrotsTotal,

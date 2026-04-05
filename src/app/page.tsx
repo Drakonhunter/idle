@@ -19,7 +19,7 @@ import {
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
-import { WORKER_WAGE_PER_CARROT } from "@/lib/game/types";
+import { WORKER_WAGE_PER_CARROT, roundGold2 } from "@/lib/game/types";
 import styles from "./page.module.css";
 
 function displayWholeGold(value: number): number {
@@ -27,9 +27,8 @@ function displayWholeGold(value: number): number {
 }
 
 function wageRateLabel(goldPerCarrot: number): string {
-  return Number.isInteger(goldPerCarrot)
-    ? `${goldPerCarrot}`
-    : goldPerCarrot.toFixed(1);
+  const q = roundGold2(goldPerCarrot);
+  return Number.isInteger(q) ? `${q}` : q.toFixed(2);
 }
 
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {
@@ -235,8 +234,9 @@ export default function Home() {
                 <p className={styles.statsHint}>
                   Your harvests pay {manualGoldEach} gold per carrot into the treasury. Field hands remit{" "}
                   {workerGoldEach} gold per carrot; the ledger accrues{" "}
-                  {wageRateLabel(workerCarrotWageAmount(state))} gold in wages per worker-sold carrot (exact in the
-                  simulation; gross, wages, and profit below are rounded to whole gold for display). Arcane upgrades can
+                  {wageRateLabel(workerCarrotWageAmount(state))} gold in wages per worker-sold carrot (ledger math is
+                  kept to 2 decimal places; gross, wages, and profit below are rounded to whole gold for display). Arcane
+                  upgrades can
                   change these amounts.
                 </p>
                 <dl className={styles.statsGrid}>

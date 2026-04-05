@@ -6,6 +6,7 @@ import {
   MANUAL_HARVEST_GOLD,
   WORKER_HARVEST_GOLD,
   WORKER_WAGE_PER_CARROT,
+  roundGold2,
 } from "./types";
 
 export function totalCarrotsHarvested(stats: GameState["stats"]): number {
@@ -35,14 +36,13 @@ export function workerCarrotHarvestGold(state: GameState): number {
 }
 
 /**
- * Wage deducted from ledger per worker-sold carrot (exact in simulation).
- * With the arcane discount this is 4.5g; UI should round when displaying totals.
+ * Wage accrued in the ledger per worker-sold carrot (quantized to 2 decimal places).
  */
 export function workerCarrotWageAmount(state: GameState): number {
   if (!state.arcane.pathUpgrades.cheaperWages) {
     return WORKER_WAGE_PER_CARROT;
   }
-  return WORKER_WAGE_PER_CARROT * 0.9;
+  return roundGold2(WORKER_WAGE_PER_CARROT * 0.9);
 }
 
 export function canShowWizardOffer(state: GameState): boolean {

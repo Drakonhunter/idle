@@ -11,7 +11,7 @@ import {
   type ArcaneState,
   type ArcanePathId,
 } from "./types";
-import { SAVE_KEY } from "./types";
+import { SAVE_KEY, roundGold2 } from "./types";
 import {
   advanceStateToNow,
   createFreshStats,
@@ -393,10 +393,11 @@ function normalizeHarvestStats(
     ? Math.max(0, workerTotal)
     : 0;
   const wagesFromSave = Number.isFinite(wagesRaw) ? Math.max(0, wagesRaw) : null;
-  const workerWagesTotalPaid =
+  const workerWagesTotalPaid = roundGold2(
     wagesFromSave != null
       ? wagesFromSave
-      : workerCarrotsTotalNorm * WORKER_WAGE_PER_CARROT;
+      : workerCarrotsTotalNorm * WORKER_WAGE_PER_CARROT,
+  );
   const encRaw = Number(raw.enchantedCarrotsTotal);
   const enchantedCarrotsTotal = Number.isFinite(encRaw)
     ? Math.max(0, Math.floor(encRaw))

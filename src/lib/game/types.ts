@@ -54,7 +54,7 @@ export type HarvestStats = {
   workerCarrotsTotal: number;
   /**
    * Cumulative wages in the ledger from worker carrot sales (per-carrot rate × harvests).
-   * May be fractional when arcane wage discount applies (e.g. 4.5 per carrot); UI rounds for display.
+   * Quantized to 2 decimal places when arcane wage discount applies (e.g. 4.50 per carrot).
    */
   workerWagesTotalPaid: number;
   /** Per-plot manual carrot harvests (aligned to `plots` indices). */
@@ -107,6 +107,12 @@ export const WORKER_HARVEST_GOLD = 5;
 /** Per carrot, the treasury pays field hands this much from the sale (lore; equals manual − worker payout). */
 export const WORKER_WAGE_PER_CARROT = MANUAL_HARVEST_GOLD - WORKER_HARVEST_GOLD;
 export const STARTING_GOLD = 0;
+
+/** Quantize gold math to 2 decimal places (ledger accruals, rates) to avoid float dust. */
+export function roundGold2(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 100) / 100;
+}
 export const STARTING_PLOT_COUNT = 1;
 
 /** Gold to buy the next plot: 10 for 2nd, 50 for 3rd, then rising. */

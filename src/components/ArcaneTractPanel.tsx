@@ -47,7 +47,7 @@ const TREES: {
       emoji: "🧑‍🌾",
       title: "Leaner payroll",
       description:
-        "Field-hand wages in the ledger are 10% less per carrot sold (5 → 4.5 gold); stats round whole numbers for display.",
+        "Field-hand wages in the ledger are 10% less per carrot sold (5 → 4.50 gold, 2 decimal places); kingdom stats round whole gold for display.",
     },
   },
 ];
