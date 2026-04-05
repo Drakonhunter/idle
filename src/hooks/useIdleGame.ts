@@ -8,8 +8,10 @@ import {
   createInitialState,
   harvestPlot,
   hireWorkerForPlot,
+  purchaseUpgrade,
   selectCropForPlot,
 } from "@/lib/game/state";
+import type { UpgradeTrackId } from "@/lib/game/state";
 import { clearSavedGame, loadGame, saveGame } from "@/lib/game/persistence";
 import type { CropId, GameState } from "@/lib/game/types";
 import { GROW_MS, nextWorkerHireCost, plotPurchaseCost } from "@/lib/game/types";
@@ -105,6 +107,16 @@ export function useIdleGame() {
     [setAndPersist],
   );
 
+  const buyUpgrade = useCallback(
+    (track: UpgradeTrackId) => {
+      setAndPersist((s) => {
+        const t = Date.now();
+        return purchaseUpgrade(s, track, t) ?? s;
+      });
+    },
+    [setAndPersist],
+  );
+
   const resetKingdom = useCallback(() => {
     const t = Date.now();
     clearSavedGame();
@@ -142,6 +154,7 @@ export function useIdleGame() {
     pickCropForPlot,
     buyNextPlot,
     hireWorkerOnPlot,
+    buyUpgrade,
     nextPlotCost,
     nextWorkerCost,
     canBuyPlot,

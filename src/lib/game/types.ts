@@ -1,9 +1,16 @@
-export type CropId = "carrot";
+export type CropId = "carrot" | "potato";
 
 export type PlotState =
   | { kind: "empty" }
-  | { kind: "growing"; crop: CropId; plantedAt: number }
-  | { kind: "ready"; crop: CropId; ripenedAt: number };
+  | { kind: "growing"; crop: CropId; plantedAt: number; growMs: number }
+  | { kind: "ready"; crop: CropId; ripenedAt: number; growMs: number };
+
+/** Per-tier counts (0 = not purchased). Max 2 per track in this release. */
+export type UpgradeTrackLevels = {
+  growth: number;
+  gold: number;
+  hands: number;
+};
 
 /** Persistent harvest counters for progression and future features. */
 export type HarvestStats = {
@@ -13,7 +20,7 @@ export type HarvestStats = {
   workerCarrotsTotal: number;
   /**
    * Cumulative wages paid to field hands from carrot sales (same gold as the per-carrot
-   * gap between manual and worker harvest); tracked for the ledger / stats UI.
+   * gap between manual and worker harvest); tracked for stats UI.
    */
   workerWagesTotalPaid: number;
   /** Per-plot manual carrot harvests (aligned to `plots` indices). */
@@ -41,8 +48,11 @@ export type TutorialState = {
 };
 
 export type GameState = {
-  version: 6;
+  version: 7;
   gold: number;
+  /** From enchanted carrot rolls (🥕✨); spent on upgrades. */
+  goldenCarrots: number;
+  upgrades: UpgradeTrackLevels;
   plots: PlotState[];
   /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */
   plotWorkers: boolean[];
@@ -56,14 +66,67 @@ export type GameState = {
 };
 
 export const SAVE_KEY = "tiny-kingdom-idle-v1";
-/** Carrot growth duration (4× faster than the original 45s loop). */
+/** Base growth duration for carrot and potato (before upgrades). */
 export const GROW_MS = 11_250;
-export const MANUAL_HARVEST_GOLD = 10;
-export const WORKER_HARVEST_GOLD = 5;
-/** Per carrot, the treasury pays field hands this much from the sale (lore; equals manual − worker payout). */
-export const WORKER_WAGE_PER_CARROT = MANUAL_HARVEST_GOLD - WORKER_HARVEST_GOLD;
+export const MANUAL_HARVEST_GOLD_CARROT = 10;
+export const MANUAL_HARVEST_GOLD_POTATO = 25;
+export const WORKER_HARVEST_GOLD_CARROT = 5;
+/** Half of manual potato gold, same ratio as carrots. */
+export const WORKER_HARVEST_GOLD_POTATO = 12;
+/** Per carrot, the treasury pays field hands this much from the sale (equals manual − worker payout). */
+export const WORKER_WAGE_PER_CARROT =
+  MANUAL_HARVEST_GOLD_CARROT - WORKER_HARVEST_GOLD_CARROT;
+export const WORKER_WAGE_PER_POTATO =
+  MANUAL_HARVEST_GOLD_POTATO - WORKER_HARVEST_GOLD_POTATO;
+/** @deprecated Use MANUAL_HARVEST_GOLD_CARROT */
+export const MANUAL_HARVEST_GOLD = MANUAL_HARVEST_GOLD_CARROT;
+/** @deprecated Use WORKER_HARVEST_GOLD_CARROT */
+export const WORKER_HARVEST_GOLD = WORKER_HARVEST_GOLD_CARROT;
 export const STARTING_GOLD = 0;
 export const STARTING_PLOT_COUNT = 1;
+
+export function manualHarvestGold(crop: CropId): number {
+  if (crop === "carrot") return MANUAL_HARVEST_GOLD_CARROT;
+  return MANUAL_HARVEST_GOLD_POTATO;
+}
+
+export function workerHarvestGold(crop: CropId): number {
+  if (crop === "carrot") return WORKER_HARVEST_GOLD_CARROT;
+  return WORKER_HARVEST_GOLD_POTATO;
+}
+
+export function workerWageForCrop(crop: CropId): number {
+  return manualHarvestGold(crop) - workerHarvestGold(crop);
+}
+
+/** Chance per manual carrot harvest for a golden carrot (enchanted roll). Potatoes never roll. */
+export function enchantedCarrotChance(upgrades: UpgradeTrackLevels): number {
+  const tier = Math.min(2, upgrades.growth);
+  if (tier <= 0) return 0;
+  return 0.01 * tier;
+}
+
+/** Grow duration when planting this crop (carrots: farm hands track; potatoes: gold track tier 2). */
+export function growDurationMsForCrop(
+  crop: CropId,
+  upgrades: UpgradeTrackLevels,
+): number {
+  if (crop === "carrot") {
+    if (upgrades.hands >= 2) return Math.round(GROW_MS * 0.9);
+    if (upgrades.hands >= 1) return Math.round(GROW_MS * 0.95);
+    return GROW_MS;
+  }
+  if (upgrades.gold >= 2) return Math.round(GROW_MS * 0.9);
+  return GROW_MS;
+}
+
+export function potatoesUnlocked(upgrades: UpgradeTrackLevels): boolean {
+  return upgrades.gold >= 1;
+}
+
+export function defaultUpgrades(): UpgradeTrackLevels {
+  return { growth: 0, gold: 0, hands: 0 };
+}
 
 /** Gold to buy the next plot: 10 for 2nd, 50 for 3rd, then rising. */
 export function plotPurchaseCost(currentPlotCount: number): number {
@@ -90,5 +153,6 @@ export function nextWorkerHireCost(plotWorkers: boolean[]): number | null {
 
 export function cropEmoji(crop: CropId): string {
   if (crop === "carrot") return "🥕";
+  if (crop === "potato") return "🥔";
   return "🌱";
 }

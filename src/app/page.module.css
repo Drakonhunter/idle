@@ -124,6 +124,97 @@
   background: linear-gradient(180deg, #e8eaf6, #c5cae9);
 }
 
+.pillGolden {
+  border-color: #e6a817;
+  background: linear-gradient(180deg, #fff4d2, #ffd54f);
+}
+
+.upgradesSection {
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  border: 2px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.upgradesTitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.upgradesHint {
+  margin: 0 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  opacity: 0.82;
+  text-align: center;
+}
+
+.upgradeTracks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.upgradeTrack {
+  padding: 0.5rem 0.55rem;
+  border-radius: 12px;
+  border: 2px dashed rgba(90, 70, 53, 0.28);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.upgradeTrackName {
+  margin: 0 0 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.upgradeTrackDesc {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+.upgradeTiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.upgradeTierBtn {
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 0.35rem 0.55rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(180deg, #fff9e6, #ffe082);
+  box-shadow: 0 2px 0 var(--panel-border);
+}
+
+.upgradeTierBtn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--panel-border);
+}
+
+.upgradeTierBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upgradeTierDone {
+  font-size: 0.72rem;
+  font-weight: 800;
+  opacity: 0.65;
+}
+
 .sectionTitle {
   margin: 0 0 0.5rem;
   font-size: 1rem;

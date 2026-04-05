@@ -10,9 +10,14 @@ import {
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
+import { nextUpgradeCost } from "@/lib/game/state";
+import type { UpgradeTrackId } from "@/lib/game/state";
 import {
-  MANUAL_HARVEST_GOLD,
+  MANUAL_HARVEST_GOLD_CARROT,
   WORKER_WAGE_PER_CARROT,
+  enchantedCarrotChance,
+  growDurationMsForCrop,
+  potatoesUnlocked,
 } from "@/lib/game/types";
 import styles from "./page.module.css";
 
@@ -75,6 +80,7 @@ export default function Home() {
     pickCropForPlot,
     buyNextPlot,
     hireWorkerOnPlot,
+    buyUpgrade,
     nextPlotCost,
     nextWorkerCost,
     canBuyPlot,
@@ -108,7 +114,7 @@ export default function Home() {
   const { manualCarrotsTotal, workerCarrotsTotal, workerWagesTotalPaid } =
     state.stats;
   const totalCarrots = manualCarrotsTotal + workerCarrotsTotal;
-  const grossGoldFromCarrots = totalCarrots * MANUAL_HARVEST_GOLD;
+  const grossGoldFromCarrots = totalCarrots * MANUAL_HARVEST_GOLD_CARROT;
   const profitGoldFromCarrots = grossGoldFromCarrots - workerWagesTotalPaid;
 
   return (
@@ -130,6 +136,10 @@ export default function Home() {
           <span className={`${styles.pill} ${styles.pillGold}`}>
             <span aria-hidden>🪙</span>
             <span>{Math.floor(state.gold)} gold</span>
+          </span>
+          <span className={`${styles.pill} ${styles.pillGolden}`}>
+            <span aria-hidden>🥕✨</span>
+            <span>{state.goldenCarrots} golden carrot{state.goldenCarrots === 1 ? "" : "s"}</span>
           </span>
           {nextWorkerCost != null ? (
             <span
@@ -154,6 +164,85 @@ export default function Home() {
         </div>
 
         {tut.complete ? (
+          <div className={styles.upgradesSection} aria-label="Farm upgrades">
+            <h2 className={styles.upgradesTitle}>Farm upgrades</h2>
+            <p className={styles.upgradesHint}>
+              Golden carrots come from enchanted rolls when you harvest carrots by hand (not from field hands).
+              Spend them to improve growth, gold, or farm hands.
+            </p>
+            <div className={styles.upgradeTracks}>
+              {(
+                [
+                  {
+                    id: "growth" as const,
+                    name: "Growth",
+                    tiers: [
+                      "+1% enchanted carrot chance on manual carrot harvests (1 🥕✨)",
+                      "+1% more (2 🥕✨) — only carrots roll; potatoes never do by default",
+                    ],
+                  },
+                  {
+                    id: "gold" as const,
+                    name: "Gold",
+                    tiers: [
+                      "Unlock potatoes — 25 gold per harvest, same grow time as carrots (2 🥕✨)",
+                      "Potatoes grow 10% faster (2 🥕✨); carrots unchanged",
+                    ],
+                  },
+                  {
+                    id: "hands" as const,
+                    name: "Farm hands",
+                    tiers: [
+                      "Carrots grow 5% faster — potatoes unchanged (1 🥕✨)",
+                      "Carrots grow 10% faster total — potatoes still unchanged (2 🥕✨)",
+                    ],
+                  },
+                ] satisfies {
+                  id: UpgradeTrackId;
+                  name: string;
+                  tiers: [string, string];
+                }[]
+              ).map((track) => {
+                const level = state.upgrades[track.id];
+                const nextCost = nextUpgradeCost(track.id, state.upgrades);
+                const canBuy =
+                  nextCost != null && state.goldenCarrots >= nextCost;
+                return (
+                  <div key={track.id} className={styles.upgradeTrack}>
+                    <h3 className={styles.upgradeTrackName}>{track.name}</h3>
+                    <p className={styles.upgradeTrackDesc}>
+                      {level >= 2
+                        ? track.tiers[1]
+                        : level === 1
+                          ? `Next: ${track.tiers[1]}`
+                          : `Next: ${track.tiers[0]}`}
+                    </p>
+                    <div className={styles.upgradeTiers}>
+                      <span className={styles.upgradeTierDone}>
+                        Tier 1{level >= 1 ? " ✓" : ""}
+                      </span>
+                      <span className={styles.upgradeTierDone}>
+                        Tier 2{level >= 2 ? " ✓" : ""}
+                      </span>
+                      {nextCost != null ? (
+                        <button
+                          type="button"
+                          className={styles.upgradeTierBtn}
+                          disabled={!canBuy}
+                          onClick={() => buyUpgrade(track.id)}
+                        >
+                          Buy tier {level + 1} ({nextCost} 🥕✨)
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {tut.complete ? (
           <div className={styles.statsBlock}>
             <button
               type="button"
@@ -166,9 +255,11 @@ export default function Home() {
             {statsOpen ? (
               <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
                 <p className={styles.statsHint}>
-                  Every carrot sells for {MANUAL_HARVEST_GOLD} gold at market (gross). Field hands take{" "}
-                  {WORKER_WAGE_PER_CARROT} gold in wages per carrot they sell — what is left is profit to the treasury.
+                  Carrots sell for {MANUAL_HARVEST_GOLD_CARROT} gold at market (gross); potatoes for 25 gold when unlocked.
+                  Field hands take wages from each sale — carrots {WORKER_WAGE_PER_CARROT}g per carrot.
                   When you harvest yourself, the crown keeps the full sale.
+                  Enchanted carrot chance (manual carrots only):{" "}
+                  {(enchantedCarrotChance(state.upgrades) * 100).toFixed(0)}%.
                 </p>
                 <dl className={styles.statsGrid}>
                   <div className={styles.statsRow}>
@@ -222,6 +313,11 @@ export default function Home() {
                 plot={plot}
                 now={now}
                 selectedCrop={state.plotSelectedCrops[i] ?? null}
+                workerHarvestDurationMs={growDurationMsForCrop(
+                  state.plotSelectedCrops[i] ?? "carrot",
+                  state.upgrades,
+                )}
+                potatoesUnlocked={potatoesUnlocked(state.upgrades)}
                 hasWorker={state.plotWorkers[i] ?? false}
                 workerHireCost={nextWorkerCost}
                 canAffordWorker={canAffordNextWorker}

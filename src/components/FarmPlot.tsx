@@ -17,6 +17,9 @@ type Props = {
   plotIndex: number;
   now: number;
   selectedCrop: CropId | null;
+  /** Wall time the worker spends harvesting after a crop is ripe (matches replant duration). */
+  workerHarvestDurationMs: number;
+  potatoesUnlocked: boolean;
   hasWorker: boolean;
   workerHireCost: number | null;
   canAffordWorker: boolean;
@@ -49,6 +52,8 @@ export function FarmPlot({
   plotIndex,
   now,
   selectedCrop,
+  workerHarvestDurationMs,
+  potatoesUnlocked,
   hasWorker,
   workerHireCost,
   canAffordWorker,
@@ -82,15 +87,21 @@ export function FarmPlot({
   const emoji = mainEmoji(plot, selectedCrop);
   const status = statusLabel(plot, selectedCrop);
 
+  const growMs =
+    growing || ready ? plot.growMs : GROW_MS;
+
   const growProgress = growing
-    ? Math.min(100, Math.max(0, ((now - plot.plantedAt) / GROW_MS) * 100))
+    ? Math.min(100, Math.max(0, ((now - plot.plantedAt) / growMs) * 100))
     : 0;
 
   const workerHarvestProgress =
     ready && hasWorker
       ? Math.min(
           100,
-          Math.max(0, ((now - plot.ripenedAt) / GROW_MS) * 100),
+          Math.max(
+            0,
+            ((now - plot.ripenedAt) / workerHarvestDurationMs) * 100,
+          ),
         )
       : 0;
 
@@ -143,6 +154,21 @@ export function FarmPlot({
                 }}
               >
                 🥕 Carrots
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.cropMenuItem}
+                disabled={!potatoesUnlocked}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!potatoesUnlocked) return;
+                  onPickCrop(plotIndex, "potato");
+                  setCropMenuOpen(false);
+                }}
+              >
+                🥔 Potatoes
+                {!potatoesUnlocked ? " (unlock in Gold upgrades)" : ""}
               </button>
             </div>
           )}

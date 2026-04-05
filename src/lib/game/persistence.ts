@@ -1,13 +1,24 @@
 import type { CropId, GameState, PlotState } from "./types";
-import { WORKER_WAGE_PER_CARROT } from "./types";
+import {
+  GROW_MS,
+  WORKER_WAGE_PER_CARROT,
+  defaultUpgrades,
+} from "./types";
 import { SAVE_KEY } from "./types";
 import {
   advanceStateToNow,
   createFreshStats,
   createInitialState,
+  normalizePlotGrowMs,
 } from "./state";
 
-const CURRENT_SAVE_VERSION = 6 as const;
+const CURRENT_SAVE_VERSION = 7 as const;
+
+/** Saved plots before v7 may omit `growMs`; `normalizePlotGrowMs` fills it. */
+type LegacyPlot =
+  | { kind: "empty" }
+  | { kind: "growing"; crop: CropId; plantedAt: number; growMs?: number }
+  | { kind: "ready"; crop: CropId; ripenedAt: number; growMs?: number };
 
 type LegacyV1Plot =
   | { kind: "empty" }
@@ -26,7 +37,7 @@ type LegacyV1State = {
 type LegacyV2State = {
   version: 2;
   gold: number;
-  plots: PlotState[];
+  plots: LegacyPlot[];
   hasWorker: boolean;
   lastSavedAt: number;
 };
@@ -34,7 +45,7 @@ type LegacyV2State = {
 type LegacyV3State = {
   version: 3;
   gold: number;
-  plots: PlotState[];
+  plots: LegacyPlot[];
   plotWorkers: boolean[];
   lastSavedAt: number;
 };
@@ -42,7 +53,7 @@ type LegacyV3State = {
 type LegacyV4State = {
   version: 4;
   gold: number;
-  plots: PlotState[];
+  plots: LegacyPlot[];
   plotWorkers: boolean[];
   plotSelectedCrops: CropId[];
   lastSavedAt: number;
@@ -51,17 +62,38 @@ type LegacyV4State = {
 type LegacyV5State = {
   version: 5;
   gold: number;
-  plots: PlotState[];
+  plots: LegacyPlot[];
   plotWorkers: boolean[];
   plotSelectedCrops: (CropId | null)[];
   lastSavedAt: number;
 };
 
-function migratePlotV1(p: LegacyV1Plot): PlotState {
+type LegacyV6State = {
+  version: 6;
+  gold: number;
+  plots: LegacyPlot[];
+  plotWorkers: boolean[];
+  plotSelectedCrops: (CropId | null)[];
+  stats: GameState["stats"];
+  tutorial: GameState["tutorial"];
+  lastSavedAt: number;
+};
+
+function migratePlotV1(p: LegacyV1Plot): LegacyPlot {
   if (p.kind === "empty") return { kind: "empty" };
   if (p.kind === "growing")
-    return { kind: "growing", crop: "carrot", plantedAt: p.plantedAt };
-  return { kind: "ready", crop: "carrot", ripenedAt: p.ripenedAt };
+    return {
+      kind: "growing",
+      crop: "carrot",
+      plantedAt: p.plantedAt,
+      growMs: GROW_MS,
+    };
+  return {
+    kind: "ready",
+    crop: "carrot",
+    ripenedAt: p.ripenedAt,
+    growMs: GROW_MS,
+  };
 }
 
 function workerSlotsForPlotCount(count: number): boolean[] {
@@ -73,7 +105,7 @@ function selectedCropsForPlotCountV4(count: number): CropId[] {
 }
 
 function alignPlotWorkers(
-  plots: PlotState[],
+  plots: LegacyPlot[],
   plotWorkers: boolean[] | undefined,
 ): boolean[] {
   const n = plots.length;
@@ -84,7 +116,7 @@ function alignPlotWorkers(
 }
 
 function alignSelectedCropsV5(
-  plots: PlotState[],
+  plots: LegacyPlot[],
   plotSelectedCrops: (CropId | null)[] | undefined,
 ): (CropId | null)[] {
   const n = plots.length;
@@ -97,7 +129,7 @@ function alignSelectedCropsV5(
 /** v1 → v2 */
 function migrateV1ToV2(parsed: LegacyV1State): LegacyV2State {
   const migrated = parsed.plots.map(migratePlotV1);
-  const plots: PlotState[] =
+  const plots: LegacyPlot[] =
     migrated.length === 0 ? [{ kind: "empty" }] : migrated;
   return {
     version: 2,
@@ -159,7 +191,7 @@ function migrateV4ToV5(parsed: LegacyV4State): LegacyV5State {
 }
 
 /** v5 → v6: harvest stats + tutorial; existing saves skip the guided intro. */
-function migrateV5ToV6(parsed: LegacyV5State): GameState {
+function migrateV5ToV6(parsed: LegacyV5State): LegacyV6State {
   const plots = parsed.plots;
   const plotWorkers = alignPlotWorkers(plots, parsed.plotWorkers);
   const plotSelectedCrops = alignSelectedCropsV5(
@@ -174,6 +206,31 @@ function migrateV5ToV6(parsed: LegacyV5State): GameState {
     plotSelectedCrops,
     stats: createFreshStats(plots.length),
     tutorial: { complete: true, step: "done" },
+    lastSavedAt: Number(parsed.lastSavedAt) || 0,
+  };
+}
+
+/** v6 → v7: golden carrots, upgrade tracks, per-plot grow duration. */
+function migrateV6ToV7(parsed: LegacyV6State): GameState {
+  const plots = parsed.plots.map(normalizePlotGrowMs);
+  const plotWorkers = alignPlotWorkers(plots, parsed.plotWorkers);
+  const plotSelectedCrops = alignSelectedCropsV5(
+    plots,
+    parsed.plotSelectedCrops,
+  );
+  const plotCount = plots.length;
+  const rawStats = parsed.stats;
+  const stats = normalizeHarvestStats(rawStats, plotCount);
+  return {
+    version: 7,
+    gold: Number(parsed.gold) || 0,
+    goldenCarrots: 0,
+    upgrades: defaultUpgrades(),
+    plots,
+    plotWorkers,
+    plotSelectedCrops,
+    stats,
+    tutorial: normalizeTutorial(parsed.tutorial as TutorialLike),
     lastSavedAt: Number(parsed.lastSavedAt) || 0,
   };
 }
@@ -217,13 +274,19 @@ function migrateSaveTowardCurrent(
       version = 6;
       continue;
     }
+    if (version === 6) {
+      const next = migrateV6ToV7(data as unknown as LegacyV6State);
+      data = { ...next } as unknown as Record<string, unknown>;
+      version = 7;
+      continue;
+    }
     return null;
   }
 
   if (version !== CURRENT_SAVE_VERSION) return null;
   if (!Array.isArray(data.plots)) return null;
 
-  const plots = data.plots as GameState["plots"];
+  const plots = (data.plots as LegacyPlot[]).map(normalizePlotGrowMs);
   const plotWorkers = alignPlotWorkers(
     plots,
     data.plotWorkers as boolean[] | undefined,
@@ -237,16 +300,45 @@ function migrateSaveTowardCurrent(
   const stats = normalizeHarvestStats(rawStats, plotCount);
   const rawTutorial = data.tutorial as TutorialLike | undefined;
   const tutorial = normalizeTutorial(rawTutorial);
+  const goldenCarrotsRaw = Number(data.goldenCarrots);
+  const goldenCarrots = Number.isFinite(goldenCarrotsRaw)
+    ? Math.max(0, goldenCarrotsRaw)
+    : 0;
+  const upgrades = normalizeUpgrades(data.upgrades);
 
   return {
-    version: 6,
+    version: 7,
     gold: Number(data.gold) || 0,
+    goldenCarrots,
+    upgrades,
     plots,
     plotWorkers,
     plotSelectedCrops,
     stats,
     tutorial,
     lastSavedAt: Number(data.lastSavedAt) || 0,
+  };
+}
+
+type UpgradesLike = {
+  growth?: unknown;
+  gold?: unknown;
+  hands?: unknown;
+};
+
+function normalizeUpgrades(raw: unknown): GameState["upgrades"] {
+  const d = defaultUpgrades();
+  if (!raw || typeof raw !== "object") return d;
+  const o = raw as UpgradesLike;
+  const clamp = (n: unknown) => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return 0;
+    return Math.min(2, Math.max(0, Math.floor(v)));
+  };
+  return {
+    growth: clamp(o.growth),
+    gold: clamp(o.gold),
+    hands: clamp(o.hands),
   };
 }
 

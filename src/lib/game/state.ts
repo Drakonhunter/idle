@@ -3,10 +3,15 @@ import {
   type GameState,
   type HarvestStats,
   type PlotState,
+  type UpgradeTrackLevels,
   GROW_MS,
-  MANUAL_HARVEST_GOLD,
-  WORKER_HARVEST_GOLD,
-  WORKER_WAGE_PER_CARROT,
+  defaultUpgrades,
+  enchantedCarrotChance,
+  growDurationMsForCrop,
+  manualHarvestGold,
+  potatoesUnlocked,
+  workerHarvestGold,
+  workerWageForCrop,
   nextWorkerHireCost,
   STARTING_GOLD,
   STARTING_PLOT_COUNT,
@@ -75,6 +80,7 @@ function recordWorkerCarrotHarvest(
   stats: HarvestStats,
   plotIndex: number,
   plotCount: number,
+  wage: number,
 ): HarvestStats {
   const manualCarrotsPerPlot = alignPerPlotCounts(stats.manualCarrotsPerPlot, plotCount);
   const workerCarrotsPerPlot = alignPerPlotCounts(stats.workerCarrotsPerPlot, plotCount);
@@ -83,9 +89,9 @@ function recordWorkerCarrotHarvest(
   return {
     manualCarrotsTotal: stats.manualCarrotsTotal,
     workerCarrotsTotal: stats.workerCarrotsTotal + 1,
-    workerWagesTotalPaid: stats.workerWagesTotalPaid + WORKER_WAGE_PER_CARROT,
+    workerWagesTotalPaid: stats.workerWagesTotalPaid + wage,
     manualCarrotsPerPlot,
-    workerCarrotsPerPlot: nextW,
+    workerCarrotsPerPlot,
   };
 }
 
@@ -101,8 +107,10 @@ function finalizeTutorial(state: GameState): GameState {
 export function createInitialState(now: number): GameState {
   const n = STARTING_PLOT_COUNT;
   return finalizeTutorial({
-    version: 6,
+    version: 7,
     gold: STARTING_GOLD,
+    goldenCarrots: 0,
+    upgrades: defaultUpgrades(),
     plots: freshPlots(n),
     plotWorkers: freshWorkerSlots(n),
     plotSelectedCrops: freshSelectedCrops(n),
@@ -112,24 +120,54 @@ export function createInitialState(now: number): GameState {
   });
 }
 
+function withGrowMs(plot: PlotState): PlotState {
+  if (plot.kind === "empty") return plot;
+  if ("growMs" in plot && typeof plot.growMs === "number") return plot;
+  return { ...plot, growMs: GROW_MS } as PlotState;
+}
+
+type PlotWithOptionalGrow =
+  | { kind: "empty" }
+  | { kind: "growing"; crop: CropId; plantedAt: number; growMs?: number }
+  | { kind: "ready"; crop: CropId; ripenedAt: number; growMs?: number };
+
+/** Saved plots before v7 may omit `growMs`; attach base duration. */
+export function normalizePlotGrowMs(plot: PlotWithOptionalGrow): PlotState {
+  if (plot.kind === "empty") return plot;
+  const growMs =
+    "growMs" in plot && typeof plot.growMs === "number" ? plot.growMs : GROW_MS;
+  if (plot.kind === "growing") {
+    return { kind: "growing", crop: plot.crop, plantedAt: plot.plantedAt, growMs };
+  }
+  return { kind: "ready", crop: plot.crop, ripenedAt: plot.ripenedAt, growMs };
+}
+
 function advanceGrowing(plot: PlotState, now: number): PlotState {
-  if (plot.kind !== "growing") return plot;
-  if (now >= plot.plantedAt + GROW_MS) {
+  const p = withGrowMs(plot);
+  if (p.kind !== "growing") return p;
+  const growMs = p.growMs;
+  if (now >= p.plantedAt + growMs) {
     return {
       kind: "ready",
-      crop: plot.crop,
-      ripenedAt: plot.plantedAt + GROW_MS,
+      crop: p.crop,
+      ripenedAt: p.plantedAt + growMs,
+      growMs,
     };
   }
-  return plot;
+  return p;
 }
 
 function cropForPlot(state: GameState, plotIndex: number): CropId | null {
   return state.plotSelectedCrops[plotIndex] ?? null;
 }
 
-function startGrowing(crop: CropId, now: number): PlotState {
-  return { kind: "growing", crop, plantedAt: now };
+function startGrowing(
+  crop: CropId,
+  now: number,
+  upgrades: UpgradeTrackLevels,
+): PlotState {
+  const growMs = growDurationMsForCrop(crop, upgrades);
+  return { kind: "growing", crop, plantedAt: now, growMs };
 }
 
 /** Safety cap for long AFK; ~months of 2-plot worker loops at current timings. */
@@ -146,23 +184,32 @@ function advanceSinglePass(state: GameState, targetNow: number): GameState {
   const plots = state.plots.map((plot, i) => {
     const p = advanceGrowing(plot, targetNow);
     const selected = cropForPlot(state, i);
+    const workerGrowMs =
+      selected != null
+        ? growDurationMsForCrop(selected, state.upgrades)
+        : GROW_MS;
     if (
       p.kind === "ready" &&
       state.plotWorkers[i] &&
-      targetNow >= p.ripenedAt + GROW_MS
+      targetNow >= p.ripenedAt + workerGrowMs
     ) {
-      gold += WORKER_HARVEST_GOLD;
+      gold += workerHarvestGold(p.crop);
       if (p.crop === "carrot") {
-        stats = recordWorkerCarrotHarvest(stats, i, plotCount);
+        stats = recordWorkerCarrotHarvest(
+          stats,
+          i,
+          plotCount,
+          workerWageForCrop("carrot"),
+        );
       }
-      const harvestDoneAt = p.ripenedAt + GROW_MS;
+      const harvestDoneAt = p.ripenedAt + workerGrowMs;
       if (selected != null) {
-        return startGrowing(selected, harvestDoneAt);
+        return startGrowing(selected, harvestDoneAt, state.upgrades);
       }
       return { kind: "empty" as const };
     }
     if (p.kind === "empty" && selected != null) {
-      return startGrowing(selected, targetNow);
+      return startGrowing(selected, targetNow, state.upgrades);
     }
     return p;
   });
@@ -184,7 +231,7 @@ function advanceSinglePass(state: GameState, targetNow: number): GameState {
 }
 
 /**
- * Worker completes harvest GROW_MS after the crop becomes ripe; manual harvest is instant.
+ * Worker completes harvest after workerGrowMs once ripe; manual harvest is instant.
  * Empty plots only grow when the player has assigned a crop.
  */
 export function advanceStateToNow(state: GameState, targetNow: number): GameState {
@@ -210,20 +257,29 @@ export function harvestPlot(
   now: number,
 ): GameState | null {
   const base = ensureStatsForPlots(state);
-  const plot = base.plots[plotIndex];
+  const plot = withGrowMs(base.plots[plotIndex]);
   if (!plot || plot.kind !== "ready") return null;
   const selected = cropForPlot(base, plotIndex);
   const nextPlots = [...base.plots];
   nextPlots[plotIndex] =
-    selected != null ? startGrowing(selected, now) : { kind: "empty" };
+    selected != null
+      ? startGrowing(selected, now, base.upgrades)
+      : { kind: "empty" };
   let stats = base.stats;
+  let goldenCarrots = base.goldenCarrots;
   if (plot.crop === "carrot") {
     stats = recordManualCarrotHarvest(stats, plotIndex, base.plots.length);
+    const p = enchantedCarrotChance(base.upgrades);
+    if (p > 0 && Math.random() < p) {
+      goldenCarrots += 1;
+    }
   }
+  const goldGain = manualHarvestGold(plot.crop);
   const after = advanceStateToNow(
     {
       ...base,
-      gold: base.gold + MANUAL_HARVEST_GOLD,
+      gold: base.gold + goldGain,
+      goldenCarrots,
       stats,
       plots: nextPlots,
       lastSavedAt: now,
@@ -240,6 +296,7 @@ export function selectCropForPlot(
   now: number,
 ): GameState {
   const base = ensureStatsForPlots(state);
+  if (crop === "potato" && !potatoesUnlocked(base.upgrades)) return base;
   const n = base.plots.length;
   if (plotIndex < 0 || plotIndex >= n) return base;
   const plotSelectedCrops = [...base.plotSelectedCrops];
@@ -249,7 +306,7 @@ export function selectCropForPlot(
   plotSelectedCrops[plotIndex] = crop;
   const plots = [...base.plots];
   if (plots[plotIndex]?.kind === "empty") {
-    plots[plotIndex] = startGrowing(crop, now);
+    plots[plotIndex] = startGrowing(crop, now, base.upgrades);
   }
   return advanceStateToNow(
     {
@@ -313,6 +370,49 @@ export function hireWorkerForPlot(
       ...base,
       gold: base.gold - cost,
       plotWorkers: nextWorkers,
+      lastSavedAt: now,
+    },
+    now,
+  );
+}
+
+export type UpgradeTrackId = keyof UpgradeTrackLevels;
+
+/** Golden carrot cost for tier 1 / tier 2 per track. */
+const UPGRADE_COSTS: Record<UpgradeTrackId, [number, number]> = {
+  growth: [1, 2],
+  gold: [2, 2],
+  hands: [1, 2],
+};
+
+export function nextUpgradeCost(
+  track: UpgradeTrackId,
+  upgrades: UpgradeTrackLevels,
+): number | null {
+  const level = upgrades[track];
+  if (level >= 2) return null;
+  return UPGRADE_COSTS[track][level];
+}
+
+export function purchaseUpgrade(
+  state: GameState,
+  track: UpgradeTrackId,
+  now: number,
+): GameState | null {
+  const base = ensureStatsForPlots(state);
+  const level = base.upgrades[track];
+  if (level >= 2) return null;
+  const cost = UPGRADE_COSTS[track][level];
+  if (base.goldenCarrots < cost) return null;
+  const nextUpgrades: UpgradeTrackLevels = {
+    ...base.upgrades,
+    [track]: level + 1,
+  };
+  return advanceStateToNow(
+    {
+      ...base,
+      goldenCarrots: base.goldenCarrots - cost,
+      upgrades: nextUpgrades,
       lastSavedAt: now,
     },
     now,
