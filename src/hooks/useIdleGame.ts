@@ -29,11 +29,17 @@ export function useIdleGame() {
     });
   }, []);
 
+  const gameReady = state != null;
+
   useEffect(() => {
-    if (!state) return;
-    const id = setInterval(() => setNow(Date.now()), TICK_MS);
+    if (!gameReady) return;
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      setState((s) => (s ? advanceStateToNow(s, t) : s));
+    }, TICK_MS);
     return () => clearInterval(id);
-  }, [state]);
+  }, [gameReady]);
 
   const effectiveState =
     state != null

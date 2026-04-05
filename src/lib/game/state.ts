@@ -53,28 +53,32 @@ function startGrowing(crop: CropId, now: number): PlotState {
   return { kind: "growing", crop, plantedAt: now };
 }
 
+/** Safety cap for long AFK; ~months of 2-plot worker loops at current timings. */
+const MAX_ADVANCE_ITERATIONS = 2_000_000;
+
 /**
- * Worker completes harvest GROW_MS after the crop becomes ripe; manual harvest is instant.
- * Empty plots only grow when the player has assigned a crop.
+ * One deterministic pass toward `targetNow`: worker harvest replants at the simulated
+ * harvest-finish time (not wall `targetNow`) so multi-cycle offline catch-up is correct.
  */
-export function advanceStateToNow(state: GameState, now: number): GameState {
+function advanceSinglePass(state: GameState, targetNow: number): GameState {
   let gold = state.gold;
   const plots = state.plots.map((plot, i) => {
-    const p = advanceGrowing(plot, now);
+    const p = advanceGrowing(plot, targetNow);
     const selected = cropForPlot(state, i);
     if (
       p.kind === "ready" &&
       state.plotWorkers[i] &&
-      now >= p.ripenedAt + GROW_MS
+      targetNow >= p.ripenedAt + GROW_MS
     ) {
       gold += WORKER_HARVEST_GOLD;
+      const harvestDoneAt = p.ripenedAt + GROW_MS;
       if (selected != null) {
-        return startGrowing(selected, now);
+        return startGrowing(selected, harvestDoneAt);
       }
       return { kind: "empty" as const };
     }
     if (p.kind === "empty" && selected != null) {
-      return startGrowing(selected, now);
+      return startGrowing(selected, targetNow);
     }
     return p;
   });
@@ -89,7 +93,27 @@ export function advanceStateToNow(state: GameState, now: number): GameState {
     ...state,
     gold,
     plots,
-    lastSavedAt: now,
+    lastSavedAt: state.lastSavedAt,
+  };
+}
+
+/**
+ * Worker completes harvest GROW_MS after the crop becomes ripe; manual harvest is instant.
+ * Empty plots only grow when the player has assigned a crop.
+ */
+export function advanceStateToNow(state: GameState, targetNow: number): GameState {
+  let current = state;
+  for (let n = 0; n < MAX_ADVANCE_ITERATIONS; n++) {
+    const next = advanceSinglePass(current, targetNow);
+    if (next === current) break;
+    current = next;
+  }
+  if (current === state) {
+    return state;
+  }
+  return {
+    ...current,
+    lastSavedAt: targetNow,
   };
 }
 
