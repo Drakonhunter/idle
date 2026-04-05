@@ -53,8 +53,8 @@ export type HarvestStats = {
   /** Carrots gathered by field hands, any field. */
   workerCarrotsTotal: number;
   /**
-   * Cumulative wages paid to field hands from carrot sales (same gold as the per-carrot
-   * gap between manual and worker harvest); tracked for the ledger / stats UI.
+   * Cumulative wages in the ledger from worker carrot sales (per-carrot rate × harvests).
+   * May be fractional when arcane wage discount applies (e.g. 4.5 per carrot); UI rounds for display.
    */
   workerWagesTotalPaid: number;
   /** Per-plot manual carrot harvests (aligned to `plots` indices). */

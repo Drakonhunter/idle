@@ -22,6 +22,16 @@ import type { TutorialStep } from "@/lib/game/types";
 import { WORKER_WAGE_PER_CARROT } from "@/lib/game/types";
 import styles from "./page.module.css";
 
+function displayWholeGold(value: number): number {
+  return Math.round(value);
+}
+
+function wageRateLabel(goldPerCarrot: number): string {
+  return Number.isInteger(goldPerCarrot)
+    ? `${goldPerCarrot}`
+    : goldPerCarrot.toFixed(1);
+}
+
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {
   switch (step) {
     case "open_crop_menu":
@@ -224,9 +234,10 @@ export default function Home() {
               <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
                 <p className={styles.statsHint}>
                   Your harvests pay {manualGoldEach} gold per carrot into the treasury. Field hands remit{" "}
-                  {workerGoldEach} gold per carrot; the ledger records{" "}
-                  {workerCarrotWageAmount(state)} gold in wages per worker-sold carrot. Arcane upgrades can change
-                  these amounts.
+                  {workerGoldEach} gold per carrot; the ledger accrues{" "}
+                  {wageRateLabel(workerCarrotWageAmount(state))} gold in wages per worker-sold carrot (exact in the
+                  simulation; gross, wages, and profit below are rounded to whole gold for display). Arcane upgrades can
+                  change these amounts.
                 </p>
                 <dl className={styles.statsGrid}>
                   <div className={styles.statsRow}>
@@ -243,15 +254,15 @@ export default function Home() {
                   </div>
                   <div className={styles.statsRow}>
                     <dt>Gross gold from carrot sales</dt>
-                    <dd>{grossGoldFromCarrots} gold</dd>
+                    <dd>{displayWholeGold(grossGoldFromCarrots)} gold</dd>
                   </div>
                   <div className={styles.statsRow}>
                     <dt>Total wages paid</dt>
-                    <dd>{Math.floor(workerWagesTotalPaid)} gold</dd>
+                    <dd>{displayWholeGold(workerWagesTotalPaid)} gold</dd>
                   </div>
                   <div className={styles.statsRow}>
                     <dt>Profit to treasury (from carrots)</dt>
-                    <dd>{Math.floor(profitGoldFromCarrots)} gold</dd>
+                    <dd>{displayWholeGold(profitGoldFromCarrots)} gold</dd>
                   </div>
                   {arcaneOpen ? (
                     <>
