@@ -9,7 +9,6 @@ import {
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
-import { MANUAL_HARVEST_GOLD, WORKER_HARVEST_GOLD } from "@/lib/game/types";
 import styles from "./page.module.css";
 
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {

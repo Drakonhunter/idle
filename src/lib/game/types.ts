@@ -52,8 +52,8 @@ export type GameState = {
 export const SAVE_KEY = "tiny-kingdom-idle-v1";
 /** Carrot growth duration (4× faster than the original 45s loop). */
 export const GROW_MS = 11_250;
-export const MANUAL_HARVEST_GOLD = 8;
-export const WORKER_HARVEST_GOLD = 4;
+export const MANUAL_HARVEST_GOLD = 10;
+export const WORKER_HARVEST_GOLD = 5;
 export const STARTING_GOLD = 0;
 export const STARTING_PLOT_COUNT = 1;
 
