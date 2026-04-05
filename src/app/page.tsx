@@ -4,6 +4,10 @@ import { FarmPlot } from "@/components/FarmPlot";
 import { TutorialModal } from "@/components/TutorialModal";
 import { TutorialOneParcelPanel } from "@/components/TutorialPanel";
 import { useIdleGame } from "@/hooks/useIdleGame";
+import {
+  plotInteraction,
+  tutorialUiLock,
+} from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
 import { MANUAL_HARVEST_GOLD, WORKER_HARVEST_GOLD } from "@/lib/game/types";
 import styles from "./page.module.css";
@@ -91,6 +95,8 @@ export default function Home() {
   const pulseHireOnPlot1 =
     !tut.complete && tut.step === "hire_worker" && canAffordNextWorker;
   const pulseBuyField = !tut.complete && tut.step === "buy_field" && canBuyPlot;
+  const uiLock = tutorialUiLock(tut.step, tut.complete);
+  const buyFieldDisabled = !canBuyPlot || (!tut.complete && !uiLock.allowBuyField);
 
   return (
     <main className={styles.page}>
@@ -98,7 +104,7 @@ export default function Home() {
         <TutorialModal step={tut.step} onNext={tutorialNext} />
       ) : null}
 
-      <header className={styles.header}>
+      <header className={styles.header} inert={!tut.complete ? true : undefined}>
         <h1 className={styles.title}>Tiny Kingdom Idle</h1>
         <p className={styles.tagline}>
           You are the ruler of a pocket-sized kingdom. Grow your fields, guard your borders, and
@@ -143,45 +149,59 @@ export default function Home() {
           </div>
         ) : null}
 
-        <h2 className={styles.sectionTitle}>Your farm</h2>
-        <div className={styles.plotGrid}>
-          {state.plots.map((plot, i) => (
-            <FarmPlot
-              key={i}
-              plotIndex={i}
-              plot={plot}
-              now={now}
-              selectedCrop={state.plotSelectedCrops[i] ?? null}
-              hasWorker={state.plotWorkers[i] ?? false}
-              workerHireCost={nextWorkerCost}
-              canAffordWorker={canAffordNextWorker}
-              highlightPlot={
-                (i === 0 && highlightFirstPlot) || (i === 1 && highlightSecondPlot)
-              }
-              pulseCropButton={i === 0 && pulseCropOnPlot0}
-              pulseHireButton={
-                (i === 0 && pulseHireOnPlot0) || (i === 1 && pulseHireOnPlot1)
-              }
-              onHarvest={harvest}
-              onHireWorker={hireWorkerOnPlot}
-              onPickCrop={pickCropForPlot}
+        <div
+          className={`${styles.farmLockRegion} ${styles.tutorialLockRegion}`}
+        >
+          <h2 className={styles.sectionTitle}>Your farm</h2>
+          <div className={styles.plotGrid}>
+            {state.plots.map((plot, i) => (
+              <FarmPlot
+                key={i}
+                plotIndex={i}
+                plot={plot}
+                now={now}
+                selectedCrop={state.plotSelectedCrops[i] ?? null}
+                hasWorker={state.plotWorkers[i] ?? false}
+                workerHireCost={nextWorkerCost}
+                canAffordWorker={canAffordNextWorker}
+                highlightPlot={
+                  (i === 0 && highlightFirstPlot) ||
+                  (i === 1 && highlightSecondPlot)
+                }
+                pulseCropButton={i === 0 && pulseCropOnPlot0}
+                pulseHireButton={
+                  (i === 0 && pulseHireOnPlot0) || (i === 1 && pulseHireOnPlot1)
+                }
+                interaction={plotInteraction(tut.step, tut.complete, i)}
+                onHarvest={harvest}
+                onHireWorker={hireWorkerOnPlot}
+                onPickCrop={pickCropForPlot}
+              />
+            ))}
+          </div>
+          {uiLock.shieldPlotsAndTitle ? (
+            <div
+              className={styles.tutorialShield}
+              aria-hidden
+              onClick={(e) => e.preventDefault()}
             />
-          ))}
+          ) : null}
         </div>
 
-        <div className={styles.actions}>
+        <div className={`${styles.actions} ${styles.tutorialLockRegion}`}>
           <div className={styles.btnRow}>
             <button
               type="button"
               className={`${styles.btn} ${styles.btnPrimary} ${pulseBuyField ? styles.btnPulse : ""}`}
               onClick={buyNextPlot}
-              disabled={!canBuyPlot}
+              disabled={buyFieldDisabled}
             >
               Buy field ({nextPlotCost} gold)
             </button>
             <button
               type="button"
               className={`${styles.btn} ${styles.btnDanger}`}
+              disabled={!uiLock.allowReset}
               onClick={() => {
                 if (
                   typeof window !== "undefined" &&
@@ -198,9 +218,16 @@ export default function Home() {
               Reset kingdom
             </button>
           </div>
+          {uiLock.shieldActionsRow ? (
+            <div
+              className={styles.tutorialShield}
+              aria-hidden
+              onClick={(e) => e.preventDefault()}
+            />
+          ) : null}
         </div>
 
-        <div className={styles.roadmap}>
+        <div className={styles.roadmap} inert={!tut.complete ? true : undefined}>
           <p className={styles.roadmapTitle}>Coming later</p>
           <div className={styles.tracts}>
             <span className={`${styles.tract} ${styles.tractActive}`}>
@@ -216,7 +243,7 @@ export default function Home() {
         </div>
       </div>
 
-      <p className={styles.footer}>
+      <p className={styles.footer} inert={!tut.complete ? true : undefined}>
         Free to play, no ads — progress saves in this browser.
       </p>
     </main>

@@ -69,6 +69,22 @@
   font-weight: 900;
 }
 
+.tutorialLockRegion {
+  position: relative;
+}
+
+.farmLockRegion {
+  margin-bottom: 1rem;
+}
+
+.tutorialShield {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  cursor: default;
+  border-radius: 12px;
+}
+
 .plotGrid {
   display: flex;
   flex-wrap: wrap;
