@@ -1,0 +1,67 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(45, 35, 28, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.card {
+  max-width: 22rem;
+  width: 100%;
+  padding: 1.25rem 1.35rem;
+  border-radius: 20px;
+  border: 3px solid var(--panel-border);
+  background: linear-gradient(180deg, #fffef8 0%, #f5e6c8 100%);
+  box-shadow: 0 8px 0 var(--panel-border), 0 20px 40px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+}
+
+.title {
+  margin: 0 0 0.65rem;
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.body {
+  margin: 0 0 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
+.btn {
+  width: 100%;
+  border: 3px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-weight: 900;
+  font-size: 1rem;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ffe08a, #f4b942);
+  box-shadow: 0 4px 0 var(--panel-border);
+  transition: transform 0.06s ease;
+}
+
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--panel-border);
+}

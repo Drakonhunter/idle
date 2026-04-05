@@ -13,6 +13,9 @@ type Props = {
   hasWorker: boolean;
   workerHireCost: number | null;
   canAffordWorker: boolean;
+  highlightPlot: boolean;
+  pulseCropButton: boolean;
+  pulseHireButton: boolean;
   onHarvest: (i: number) => void;
   onHireWorker: (plotIndex: number) => void;
   onPickCrop: (plotIndex: number, crop: CropId) => void;
@@ -41,6 +44,9 @@ export function FarmPlot({
   hasWorker,
   workerHireCost,
   canAffordWorker,
+  highlightPlot,
+  pulseCropButton,
+  pulseHireButton,
   onHarvest,
   onHireWorker,
   onPickCrop,
@@ -85,12 +91,15 @@ export function FarmPlot({
     selectedCrop != null ? cropEmoji(selectedCrop) : "⋯";
 
   return (
-    <div className={styles.plotWrap} ref={menuRef}>
+    <div
+      className={`${styles.plotWrap} ${highlightPlot ? styles.plotWrapHighlight : ""}`}
+      ref={menuRef}
+    >
       <div className={styles.plotChrome}>
         <div className={styles.cornerWrap}>
           <button
             type="button"
-            className={styles.cornerBtn}
+            className={`${styles.cornerBtn} ${pulseCropButton ? styles.cornerBtnPulse : ""}`}
             onClick={(e) => {
               e.stopPropagation();
               setCropMenuOpen((o) => !o);
@@ -136,7 +145,7 @@ export function FarmPlot({
         ) : workerHireCost != null ? (
           <button
             type="button"
-            className={styles.cornerBtn}
+            className={`${styles.cornerBtn} ${pulseHireButton ? styles.cornerBtnPulse : ""}`}
             onClick={(e) => {
               e.stopPropagation();
               onHireWorker(plotIndex);

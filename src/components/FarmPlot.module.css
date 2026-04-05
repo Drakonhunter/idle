@@ -4,6 +4,39 @@
   max-width: 8.5rem;
 }
 
+.plotWrapHighlight {
+  z-index: 3;
+  padding: 0.2rem;
+  margin: -0.2rem;
+  border-radius: 18px;
+  box-shadow: 0 0 0 3px #ffd54f, 0 0 0 6px rgba(255, 193, 7, 0.45);
+  animation: plotGlow 1.4s ease-in-out infinite;
+}
+
+@keyframes plotGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px #ffd54f, 0 0 0 6px rgba(255, 193, 7, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 3px #ffecb3, 0 0 0 10px rgba(255, 193, 7, 0.2);
+  }
+}
+
+.cornerBtnPulse {
+  animation: btnPulse 1s ease-in-out infinite;
+}
+
+@keyframes btnPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
 .plotChrome {
   position: absolute;
   top: 0;
