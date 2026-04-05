@@ -5,8 +5,37 @@ export type PlotState =
   | { kind: "growing"; crop: CropId; plantedAt: number }
   | { kind: "ready"; crop: CropId; ripenedAt: number };
 
+/** Persistent harvest counters for progression and future features. */
+export type HarvestStats = {
+  /** Carrots picked by the ruler (click), any field. */
+  manualCarrotsTotal: number;
+  /** Carrots gathered by field hands, any field. */
+  workerCarrotsTotal: number;
+  /** Per-plot manual carrot harvests (aligned to `plots` indices). */
+  manualCarrotsPerPlot: number[];
+  /** Per-plot worker carrot harvests. */
+  workerCarrotsPerPlot: number[];
+};
+
+export type TutorialStep =
+  | "welcome"
+  | "one_parcel"
+  | "crop_menu_intro"
+  | "open_crop_menu"
+  | "harvest_for_land"
+  | "buy_field"
+  | "plant_second_field"
+  | "save_for_worker"
+  | "hire_worker"
+  | "done";
+
+export type TutorialState = {
+  complete: boolean;
+  step: TutorialStep;
+};
+
 export type GameState = {
-  version: 5;
+  version: 6;
   gold: number;
   plots: PlotState[];
   /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */
@@ -15,6 +44,8 @@ export type GameState = {
    * Crop assigned to this plot; replants after harvest. `null` = fallow until player picks.
    */
   plotSelectedCrops: (CropId | null)[];
+  stats: HarvestStats;
+  tutorial: TutorialState;
   lastSavedAt: number;
 };
 

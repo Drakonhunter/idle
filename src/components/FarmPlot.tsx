@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { CropId, PlotState } from "@/lib/game/types";
 import { cropEmoji, GROW_MS } from "@/lib/game/types";
+import type { PlotInteractionFlags } from "@/lib/game/tutorialInteraction";
 import styles from "./FarmPlot.module.css";
+
+const defaultInteraction: PlotInteractionFlags = {
+  cropMenu: true,
+  harvest: true,
+  hire: true,
+};
 
 type Props = {
   plot: PlotState;
@@ -13,6 +20,10 @@ type Props = {
   hasWorker: boolean;
   workerHireCost: number | null;
   canAffordWorker: boolean;
+  highlightPlot: boolean;
+  pulseCropButton: boolean;
+  pulseHireButton: boolean;
+  interaction?: PlotInteractionFlags;
   onHarvest: (i: number) => void;
   onHireWorker: (plotIndex: number) => void;
   onPickCrop: (plotIndex: number, crop: CropId) => void;
@@ -41,6 +52,10 @@ export function FarmPlot({
   hasWorker,
   workerHireCost,
   canAffordWorker,
+  highlightPlot,
+  pulseCropButton,
+  pulseHireButton,
+  interaction = defaultInteraction,
   onHarvest,
   onHireWorker,
   onPickCrop,
@@ -48,8 +63,10 @@ export function FarmPlot({
   const [cropMenuOpen, setCropMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const menuVisible = interaction.cropMenu && cropMenuOpen;
+
   useEffect(() => {
-    if (!cropMenuOpen) return;
+    if (!menuVisible) return;
     const close = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setCropMenuOpen(false);
@@ -57,7 +74,7 @@ export function FarmPlot({
     };
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
-  }, [cropMenuOpen]);
+  }, [menuVisible]);
 
   const growing = plot.kind === "growing";
   const ready = plot.kind === "ready";
@@ -78,25 +95,30 @@ export function FarmPlot({
       : 0;
 
   const handleHarvest = () => {
-    if (ready) onHarvest(plotIndex);
+    if (ready && interaction.harvest) onHarvest(plotIndex);
   };
 
   const cornerCropIcon =
     selectedCrop != null ? cropEmoji(selectedCrop) : "⋯";
 
   return (
-    <div className={styles.plotWrap} ref={menuRef}>
+    <div
+      className={`${styles.plotWrap} ${highlightPlot ? styles.plotWrapHighlight : ""}`}
+      ref={menuRef}
+    >
       <div className={styles.plotChrome}>
         <div className={styles.cornerWrap}>
           <button
             type="button"
-            className={styles.cornerBtn}
+            className={`${styles.cornerBtn} ${pulseCropButton ? styles.cornerBtnPulse : ""}`}
             onClick={(e) => {
               e.stopPropagation();
+              if (!interaction.cropMenu) return;
               setCropMenuOpen((o) => !o);
             }}
+            disabled={!interaction.cropMenu}
             title="Choose crop for this field"
-            aria-expanded={cropMenuOpen}
+            aria-expanded={menuVisible}
             aria-haspopup="menu"
             aria-label="Choose crop"
           >
@@ -104,7 +126,7 @@ export function FarmPlot({
               {cornerCropIcon}
             </span>
           </button>
-          {cropMenuOpen && (
+          {menuVisible && (
             <div
               className={styles.cropMenu}
               role="menu"
@@ -136,12 +158,13 @@ export function FarmPlot({
         ) : workerHireCost != null ? (
           <button
             type="button"
-            className={styles.cornerBtn}
+            className={`${styles.cornerBtn} ${pulseHireButton ? styles.cornerBtnPulse : ""}`}
             onClick={(e) => {
               e.stopPropagation();
+              if (!interaction.hire || !canAffordWorker) return;
               onHireWorker(plotIndex);
             }}
-            disabled={!canAffordWorker}
+            disabled={!interaction.hire || !canAffordWorker}
             title={`Hire next field hand (${workerHireCost} gold)`}
             aria-label={`Hire field hand for ${workerHireCost} gold`}
           >
@@ -167,9 +190,9 @@ export function FarmPlot({
       ) : (
         <button
           type="button"
-          className={`${styles.plot} ${ready ? styles.readyPulse : ""}`}
+          className={`${styles.plot} ${ready && interaction.harvest ? styles.readyPulse : ""}`}
           onClick={handleHarvest}
-          disabled={!ready}
+          disabled={!ready || !interaction.harvest}
           aria-label={
             ready
               ? "Click to harvest for bonus gold"

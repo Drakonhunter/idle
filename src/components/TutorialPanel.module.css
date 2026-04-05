@@ -1,0 +1,51 @@
+.wrap {
+  margin: 0 0 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  border: 3px solid var(--panel-border);
+  background: linear-gradient(180deg, #fffef8, #fff3d6);
+  box-shadow: 0 4px 0 var(--panel-border);
+  text-align: center;
+}
+
+.kicker {
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.65;
+}
+
+.title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.body {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.45;
+  opacity: 0.9;
+}
+
+.btn {
+  width: 100%;
+  max-width: 14rem;
+  border: 3px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(180deg, #c8f0ff, #8fd4f0);
+  box-shadow: 0 3px 0 var(--panel-border);
+}
+
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--panel-border);
+}

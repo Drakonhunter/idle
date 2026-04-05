@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  advanceStateToNow,
+  advanceTutorialIntro,
   buyPlot,
   createInitialState,
   harvestPlot,
   hireWorkerForPlot,
   selectCropForPlot,
-  advanceStateToNow,
 } from "@/lib/game/state";
 import { clearSavedGame, loadGame, saveGame } from "@/lib/game/persistence";
 import type { CropId, GameState } from "@/lib/game/types";
@@ -111,6 +112,10 @@ export function useIdleGame() {
     setState(createInitialState(t));
   }, []);
 
+  const tutorialNext = useCallback(() => {
+    setAndPersist((s) => advanceTutorialIntro(s));
+  }, [setAndPersist]);
+
   const nextPlotCost =
     effectiveState != null
       ? plotPurchaseCost(effectiveState.plots.length)
@@ -142,5 +147,6 @@ export function useIdleGame() {
     canBuyPlot,
     canAffordNextWorker,
     resetKingdom,
+    tutorialNext,
   };
 }
