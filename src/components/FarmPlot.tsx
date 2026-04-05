@@ -18,6 +18,8 @@ type Props = {
   now: number;
   /** Effective ms for one carrot growth cycle (may shrink with arcane upgrades). */
   growMs: number;
+  /** Ms from ripe until worker finishes harvest (separate from grow time for future upgrades). */
+  workerPostRipeMs: number;
   selectedCrop: CropId | null;
   hasWorker: boolean;
   workerHireCost: number | null;
@@ -51,6 +53,7 @@ export function FarmPlot({
   plotIndex,
   now,
   growMs,
+  workerPostRipeMs,
   selectedCrop,
   hasWorker,
   workerHireCost,
@@ -93,7 +96,7 @@ export function FarmPlot({
     ready && hasWorker
       ? Math.min(
           100,
-          Math.max(0, ((now - plot.ripenedAt) / growMs) * 100),
+          Math.max(0, ((now - plot.ripenedAt) / workerPostRipeMs) * 100),
         )
       : 0;
 

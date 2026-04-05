@@ -102,6 +102,11 @@ export type GameState = {
 export const SAVE_KEY = "tiny-kingdom-idle-v1";
 /** Carrot growth duration (4× faster than the original 45s loop). */
 export const GROW_MS = 11_250;
+/**
+ * Ms after a crop is ripe before a field hand finishes harvesting and replants.
+ * Currently equals base `GROW_MS`; not shortened by Hastened soil (future: its own upgrade).
+ */
+export const WORKER_POST_RIPE_HARVEST_MS = GROW_MS;
 export const MANUAL_HARVEST_GOLD = 10;
 export const WORKER_HARVEST_GOLD = 5;
 /** Per carrot, the treasury pays field hands this much from the sale (lore; equals manual − worker payout). */

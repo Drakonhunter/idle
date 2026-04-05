@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { carrotGrowMs } from "@/lib/game/arcane";
+import { carrotGrowMs, carrotWorkerPostRipeMs } from "@/lib/game/arcane";
 import {
   acceptWizardHelpFree,
   advanceStateToNow,
@@ -17,7 +17,12 @@ import {
 } from "@/lib/game/state";
 import { clearSavedGame, loadGame, saveGame } from "@/lib/game/persistence";
 import type { ArcanePathId, CropId, GameState } from "@/lib/game/types";
-import { GROW_MS, nextWorkerHireCost, plotPurchaseCost } from "@/lib/game/types";
+import {
+  GROW_MS,
+  WORKER_POST_RIPE_HARVEST_MS,
+  nextWorkerHireCost,
+  plotPurchaseCost,
+} from "@/lib/game/types";
 
 const TICK_MS = 500;
 const SAVE_DEBOUNCE_MS = 400;
@@ -186,11 +191,16 @@ export function useIdleGame() {
 
   const growMsEffective =
     effectiveState != null ? carrotGrowMs(effectiveState) : GROW_MS;
+  const workerPostRipeMsEffective =
+    effectiveState != null
+      ? carrotWorkerPostRipeMs(effectiveState)
+      : WORKER_POST_RIPE_HARVEST_MS;
 
   return {
     state: effectiveState,
     now,
     growMs: growMsEffective,
+    workerPostRipeMs: workerPostRipeMsEffective,
     harvest,
     pickCropForPlot,
     buyNextPlot,

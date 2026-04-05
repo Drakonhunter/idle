@@ -16,6 +16,7 @@ import {
   arcaneTractUnlocked,
   canPayWizardReturn,
   carrotGrowMs,
+  carrotWorkerPostRipeMs,
   manualCarrotHarvestGold,
   rollEnchantedCarrotHarvest,
   workerCarrotHarvestGold,
@@ -173,13 +174,14 @@ function advanceSinglePass(
   let arcane = state.arcane;
   const plotCount = state.plots.length;
   const growMs = carrotGrowMs(state);
+  const workerPostRipeMs = carrotWorkerPostRipeMs(state);
   const plots = state.plots.map((plot, i) => {
     const p = advanceGrowing(plot, targetNow, growMs);
     const selected = cropForPlot(state, i);
     if (
       p.kind === "ready" &&
       state.plotWorkers[i] &&
-      targetNow >= p.ripenedAt + growMs
+      targetNow >= p.ripenedAt + workerPostRipeMs
     ) {
       const slice = { ...state, arcane };
       gold += workerCarrotHarvestGold(slice);
@@ -192,7 +194,7 @@ function advanceSinglePass(
         const wage = workerCarrotWageAmount({ ...state, arcane });
         stats = recordWorkerCarrotHarvest(stats, i, plotCount, wage);
       }
-      const harvestDoneAt = p.ripenedAt + growMs;
+      const harvestDoneAt = p.ripenedAt + workerPostRipeMs;
       if (selected != null) {
         return startGrowing(selected, harvestDoneAt);
       }

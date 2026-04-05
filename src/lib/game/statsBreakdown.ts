@@ -4,10 +4,12 @@ import {
   GROW_MS,
   MANUAL_HARVEST_GOLD,
   WORKER_HARVEST_GOLD,
+  WORKER_POST_RIPE_HARVEST_MS,
   WORKER_WAGE_PER_CARROT,
 } from "./types";
 import {
   carrotGrowMs,
+  carrotWorkerPostRipeMs,
   manualCarrotHarvestGold,
   workerCarrotHarvestGold,
   workerCarrotWageAmount,
@@ -27,6 +29,9 @@ export type KingdomStatsBreakdown = {
     growthEquation: string;
     effectiveGrowMs: number;
     effectiveGrowDisplay: string;
+    workerPostRipeBaseMs: number;
+    workerPostRipeEffectiveMs: number;
+    workerPostRipeDisplay: string;
     workerHarvestNote: string;
     workerHarvestEquation: string;
   };
@@ -78,6 +83,8 @@ export function buildKingdomStatsBreakdown(state: GameState): KingdomStatsBreakd
     ? `round(${GROW_MS} × 0.9) = ${effectiveGrowMs}`
     : `${GROW_MS} (no Hastened soil)`;
 
+  const workerPostRipeMs = carrotWorkerPostRipeMs(state);
+
   const hasSale = state.arcane.pathUpgrades.saleGold;
   const goldMult = hasSale ? 1.1 : 1;
   const multLabel = hasSale ? "Golden market ×1.1" : "×1 (no Golden market)";
@@ -123,9 +130,12 @@ export function buildKingdomStatsBreakdown(state: GameState): KingdomStatsBreakd
       growthEquation,
       effectiveGrowMs,
       effectiveGrowDisplay: formatMs(effectiveGrowMs),
+      workerPostRipeBaseMs: WORKER_POST_RIPE_HARVEST_MS,
+      workerPostRipeEffectiveMs: workerPostRipeMs,
+      workerPostRipeDisplay: formatMs(workerPostRipeMs),
       workerHarvestNote:
-        "A field hand completes a harvest one full grow-cycle after the crop becomes ripe (same duration as planting→ripe).",
-      workerHarvestEquation: `worker_wait_ms = grow_ms_effective → ${effectiveGrowMs} ms`,
+        "Worker delay after ripe is its own timer (currently equals base grow time). Hastened soil only speeds planting → ripe, not hand speed — a future upgrade can change worker_post_ripe_ms.",
+      workerHarvestEquation: `worker_wait_ms = worker_post_ripe_ms → ${workerPostRipeMs} ms (constant ${WORKER_POST_RIPE_HARVEST_MS} today)`,
     },
     manualGold: {
       base: MANUAL_HARVEST_GOLD,

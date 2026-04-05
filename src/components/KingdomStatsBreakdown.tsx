@@ -39,13 +39,17 @@ export function KingdomStatsBreakdownView({ b, displayWholeGold }: Props) {
           <strong>Effective grow time:</strong>{" "}
           <Eq>{timing.effectiveGrowDisplay}</Eq>
         </p>
+        <p className={styles.p}>
+          <strong>Worker post-ripe delay</strong> (ripe → hand finishes, separate from grow): base{" "}
+          <Eq>{timing.workerPostRipeBaseMs.toLocaleString()} ms</Eq> → effective{" "}
+          <Eq>{timing.workerPostRipeDisplay}</Eq>
+        </p>
         <p className={styles.pMuted}>{timing.workerHarvestNote}</p>
         <p className={styles.p}>
-          <strong>Field-hand harvest time</strong> (ripe → hand finishes):{" "}
-          <Eq>{timing.workerHarvestEquation}</Eq>
+          <strong>Equation:</strong> <Eq>{timing.workerHarvestEquation}</Eq>
         </p>
         <p className={styles.pMuted}>
-          Manual harvest is instant when you click a ripe field; only workers wait the extra cycle.
+          Manual harvest is instant when you click a ripe field; only workers use the post-ripe timer.
         </p>
       </section>
 
@@ -53,6 +57,12 @@ export function KingdomStatsBreakdownView({ b, displayWholeGold }: Props) {
         <h3 id="bd-gold" className={styles.h3}>
           Gold per carrot (before aggregates)
         </h3>
+        <p className={styles.pMuted}>
+          Three separate numbers: what <strong>you</strong> earn per click, what the <strong>treasury</strong> keeps
+          per worker sale, and what the <strong>ledger</strong> records as wages. They are not meant to sum to one
+          “total sale” in the UI — the worker path is “remit + wage = conceptual 10g sale” only when Golden market is
+          off (5 + 5); with Golden market, remit is rounded up (6g) while wages use the Fair ledgers rule (4.5g).
+        </p>
         <p className={styles.p}>
           <strong>Your harvest</strong> — base <Eq>{manualGold.base}g</Eq>,{" "}
           <span className={styles.mod}>{manualGold.multLabel}</span>

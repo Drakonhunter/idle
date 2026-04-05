@@ -5,6 +5,7 @@ import {
   GROW_MS,
   MANUAL_HARVEST_GOLD,
   WORKER_HARVEST_GOLD,
+  WORKER_POST_RIPE_HARVEST_MS,
   WORKER_WAGE_PER_CARROT,
   roundGold2,
 } from "./types";
@@ -23,6 +24,11 @@ export function carrotGrowMs(state: GameState): number {
     return Math.round(GROW_MS * 0.9);
   }
   return GROW_MS;
+}
+
+/** Time workers wait after ripe before auto-harvest completes (not tied to Hastened soil yet). */
+export function carrotWorkerPostRipeMs(_state: GameState): number {
+  return WORKER_POST_RIPE_HARVEST_MS;
 }
 
 export function manualCarrotHarvestGold(state: GameState): number {

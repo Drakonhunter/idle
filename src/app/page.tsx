@@ -93,6 +93,7 @@ export default function Home() {
     state,
     now,
     growMs,
+    workerPostRipeMs,
     harvest,
     pickCropForPlot,
     buyNextPlot,
@@ -357,6 +358,7 @@ export default function Home() {
                 plot={plot}
                 now={now}
                 growMs={growMs}
+                workerPostRipeMs={workerPostRipeMs}
                 selectedCrop={state.plotSelectedCrops[i] ?? null}
                 hasWorker={state.plotWorkers[i] ?? false}
                 workerHireCost={nextWorkerCost}
