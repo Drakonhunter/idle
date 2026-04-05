@@ -1,5 +1,51 @@
 export type CropId = "carrot";
 
+/** Arcane tract: three trees; each root unlock costs one enchanted carrot. */
+export type ArcanePathId = "growth" | "saleGold" | "cheaperWages";
+
+export type ArcanePathUpgrades = Record<ArcanePathId, boolean>;
+
+export type ArcaneState = {
+  /** Wizard intro was closed with “not now” (can pay later). */
+  wizardOfferDismissed: boolean;
+  /** Accepted the wizard’s help for free at the offer. */
+  wizardHelpFree: boolean;
+  /** Paid gold to unlock after refusing the first offer. */
+  wizardHelpPaid: boolean;
+  /** First arcane node: random enchanted drops from carrot harvests. */
+  enchantedHarvestUnlocked: boolean;
+  /** After unlocking the node, the next carrot harvest is always enchanted once. */
+  nextCarrotHarvestIsEnchanted: boolean;
+  /** Spent on path upgrades (each costs 1 enchanted carrot). */
+  enchantedCarrotsInventory: number;
+  pathUpgrades: ArcanePathUpgrades;
+  /**
+   * Post-wizard tutorial: 0 = off (done or not started), 1–3 = current step screen.
+   */
+  arcaneIntroScreen: number;
+};
+
+export const ARCANE_WIZARD_RETURN_COST = 100;
+/** Chance for a carrot harvest to yield an enchanted carrot after the node is unlocked (after the guaranteed first). */
+export const ARCANE_ENCHANTED_DROP_CHANCE = 0.01;
+
+export function defaultArcaneState(): ArcaneState {
+  return {
+    wizardOfferDismissed: false,
+    wizardHelpFree: false,
+    wizardHelpPaid: false,
+    enchantedHarvestUnlocked: false,
+    nextCarrotHarvestIsEnchanted: false,
+    enchantedCarrotsInventory: 0,
+    pathUpgrades: {
+      growth: false,
+      saleGold: false,
+      cheaperWages: false,
+    },
+    arcaneIntroScreen: 0,
+  };
+}
+
 export type PlotState =
   | { kind: "empty" }
   | { kind: "growing"; crop: CropId; plantedAt: number }
@@ -12,14 +58,16 @@ export type HarvestStats = {
   /** Carrots gathered by field hands, any field. */
   workerCarrotsTotal: number;
   /**
-   * Cumulative wages paid to field hands from carrot sales (same gold as the per-carrot
-   * gap between manual and worker harvest); tracked for the ledger / stats UI.
+   * Cumulative wages in the ledger from worker carrot sales (per-carrot rate × harvests).
+   * Quantized to 2 decimal places when arcane wage discount applies (e.g. 4.50 per carrot).
    */
   workerWagesTotalPaid: number;
   /** Per-plot manual carrot harvests (aligned to `plots` indices). */
   manualCarrotsPerPlot: number[];
   /** Per-plot worker carrot harvests. */
   workerCarrotsPerPlot: number[];
+  /** Lifetime enchanted carrots obtained from harvests (drops), before spending on trees. */
+  enchantedCarrotsTotal: number;
 };
 
 export type TutorialStep =
@@ -41,7 +89,7 @@ export type TutorialState = {
 };
 
 export type GameState = {
-  version: 6;
+  version: 9;
   gold: number;
   plots: PlotState[];
   /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */
@@ -52,17 +100,29 @@ export type GameState = {
   plotSelectedCrops: (CropId | null)[];
   stats: HarvestStats;
   tutorial: TutorialState;
+  arcane: ArcaneState;
   lastSavedAt: number;
 };
 
 export const SAVE_KEY = "tiny-kingdom-idle-v1";
 /** Carrot growth duration (4× faster than the original 45s loop). */
 export const GROW_MS = 11_250;
+/**
+ * Ms after a crop is ripe before a field hand finishes harvesting and replants.
+ * Currently equals base `GROW_MS`; not shortened by Hastened soil (future: its own upgrade).
+ */
+export const WORKER_POST_RIPE_HARVEST_MS = GROW_MS;
 export const MANUAL_HARVEST_GOLD = 10;
 export const WORKER_HARVEST_GOLD = 5;
 /** Per carrot, the treasury pays field hands this much from the sale (lore; equals manual − worker payout). */
 export const WORKER_WAGE_PER_CARROT = MANUAL_HARVEST_GOLD - WORKER_HARVEST_GOLD;
 export const STARTING_GOLD = 0;
+
+/** Quantize gold math to 2 decimal places (ledger accruals, rates) to avoid float dust. */
+export function roundGold2(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 100) / 100;
+}
 export const STARTING_PLOT_COUNT = 1;
 
 /** Gold to buy the next plot: 10 for 2nd, 50 for 3rd, then rising. */

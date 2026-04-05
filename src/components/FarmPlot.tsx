@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CropId, PlotState } from "@/lib/game/types";
-import { cropEmoji, GROW_MS } from "@/lib/game/types";
+import { cropEmoji } from "@/lib/game/types";
 import type { PlotInteractionFlags } from "@/lib/game/tutorialInteraction";
 import styles from "./FarmPlot.module.css";
 
@@ -16,6 +16,10 @@ type Props = {
   plot: PlotState;
   plotIndex: number;
   now: number;
+  /** Effective ms for one carrot growth cycle (may shrink with arcane upgrades). */
+  growMs: number;
+  /** Ms from ripe until worker finishes harvest (separate from grow time for future upgrades). */
+  workerPostRipeMs: number;
   selectedCrop: CropId | null;
   hasWorker: boolean;
   workerHireCost: number | null;
@@ -48,6 +52,8 @@ export function FarmPlot({
   plot,
   plotIndex,
   now,
+  growMs,
+  workerPostRipeMs,
   selectedCrop,
   hasWorker,
   workerHireCost,
@@ -83,14 +89,14 @@ export function FarmPlot({
   const status = statusLabel(plot, selectedCrop);
 
   const growProgress = growing
-    ? Math.min(100, Math.max(0, ((now - plot.plantedAt) / GROW_MS) * 100))
+    ? Math.min(100, Math.max(0, ((now - plot.plantedAt) / growMs) * 100))
     : 0;
 
   const workerHarvestProgress =
     ready && hasWorker
       ? Math.min(
           100,
-          Math.max(0, ((now - plot.ripenedAt) / GROW_MS) * 100),
+          Math.max(0, ((now - plot.ripenedAt) / workerPostRipeMs) * 100),
         )
       : 0;
 

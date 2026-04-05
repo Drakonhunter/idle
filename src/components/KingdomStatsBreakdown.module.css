@@ -1,0 +1,59 @@
+.wrap {
+  margin-top: 0.65rem;
+  text-align: left;
+}
+
+.section {
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px dashed rgba(90, 70, 53, 0.28);
+}
+
+.section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.78;
+  color: var(--text);
+}
+
+.p {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
+.pMuted {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+  opacity: 0.72;
+  font-style: italic;
+}
+
+.eq {
+  display: inline;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
+  font-weight: 700;
+  padding: 0.08rem 0.2rem;
+  border-radius: 4px;
+  background: rgba(90, 70, 53, 0.08);
+  word-break: break-word;
+}
+
+.mod {
+  font-weight: 800;
+  color: #5b21b6;
+}

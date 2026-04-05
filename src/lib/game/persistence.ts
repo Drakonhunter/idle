@@ -1,13 +1,24 @@
-import type { CropId, GameState, PlotState } from "./types";
-import { WORKER_WAGE_PER_CARROT } from "./types";
-import { SAVE_KEY } from "./types";
+import type {
+  CropId,
+  GameState,
+  HarvestStats,
+  PlotState,
+  TutorialState,
+} from "./types";
+import {
+  WORKER_WAGE_PER_CARROT,
+  defaultArcaneState,
+  type ArcaneState,
+  type ArcanePathId,
+} from "./types";
+import { SAVE_KEY, roundGold2 } from "./types";
 import {
   advanceStateToNow,
   createFreshStats,
   createInitialState,
 } from "./state";
 
-const CURRENT_SAVE_VERSION = 6 as const;
+const CURRENT_SAVE_VERSION = 9 as const;
 
 type LegacyV1Plot =
   | { kind: "empty" }
@@ -54,6 +65,17 @@ type LegacyV5State = {
   plots: PlotState[];
   plotWorkers: boolean[];
   plotSelectedCrops: (CropId | null)[];
+  lastSavedAt: number;
+};
+
+type LegacyV6State = {
+  version: 6;
+  gold: number;
+  plots: PlotState[];
+  plotWorkers: boolean[];
+  plotSelectedCrops: (CropId | null)[];
+  stats: HarvestStats;
+  tutorial: TutorialState;
   lastSavedAt: number;
 };
 
@@ -159,7 +181,7 @@ function migrateV4ToV5(parsed: LegacyV4State): LegacyV5State {
 }
 
 /** v5 → v6: harvest stats + tutorial; existing saves skip the guided intro. */
-function migrateV5ToV6(parsed: LegacyV5State): GameState {
+function migrateV5ToV6(parsed: LegacyV5State): LegacyV6State {
   const plots = parsed.plots;
   const plotWorkers = alignPlotWorkers(plots, parsed.plotWorkers);
   const plotSelectedCrops = alignSelectedCropsV5(
@@ -175,6 +197,66 @@ function migrateV5ToV6(parsed: LegacyV5State): GameState {
     stats: createFreshStats(plots.length),
     tutorial: { complete: true, step: "done" },
     lastSavedAt: Number(parsed.lastSavedAt) || 0,
+  };
+}
+
+/** v6 → v7: arcane tract state (wizard, enchanted carrots, path upgrades). */
+function migrateV6ToV7(parsed: LegacyV6State): LegacyV7State {
+  return {
+    ...parsed,
+    version: 7,
+    arcane: defaultArcaneState(),
+  };
+}
+
+type LegacyV7State = {
+  version: 7;
+  gold: number;
+  plots: GameState["plots"];
+  plotWorkers: boolean[];
+  plotSelectedCrops: (CropId | null)[];
+  /** v7 JSON saves omit `enchantedCarrotsTotal` until v8 migration runs. */
+  stats: Omit<GameState["stats"], "enchantedCarrotsTotal"> &
+    Partial<Pick<GameState["stats"], "enchantedCarrotsTotal">>;
+  tutorial: GameState["tutorial"];
+  arcane: GameState["arcane"];
+  lastSavedAt: number;
+};
+
+type LegacyV8State = {
+  version: 8;
+  gold: number;
+  plots: GameState["plots"];
+  plotWorkers: boolean[];
+  plotSelectedCrops: (CropId | null)[];
+  stats: GameState["stats"];
+  tutorial: GameState["tutorial"];
+  arcane: GameState["arcane"];
+  lastSavedAt: number;
+};
+
+/** v8 → v9: arcane intro screen flag; bump version only. */
+function migrateV8ToV9(parsed: LegacyV8State): GameState {
+  return {
+    ...parsed,
+    version: 9,
+  };
+}
+
+/** v7 → v8: lifetime enchanted carrot counter in stats. */
+function migrateV7ToV8(parsed: LegacyV7State): LegacyV8State {
+  const spentOnTrees = Object.values(parsed.arcane.pathUpgrades).filter(Boolean).length;
+  const floorFromArcane =
+    parsed.arcane.enchantedCarrotsInventory + spentOnTrees;
+  const rawEnc = Number(parsed.stats.enchantedCarrotsTotal);
+  const fromSave = Number.isFinite(rawEnc) ? Math.max(0, Math.floor(rawEnc)) : 0;
+  return {
+    ...parsed,
+    version: 8,
+    stats: {
+      ...parsed.stats,
+      enchantedCarrotsTotal: Math.max(fromSave, floorFromArcane),
+    },
   };
 }
 
@@ -217,6 +299,24 @@ function migrateSaveTowardCurrent(
       version = 6;
       continue;
     }
+    if (version === 6) {
+      const next = migrateV6ToV7(data as unknown as LegacyV6State);
+      data = { ...next } as unknown as Record<string, unknown>;
+      version = 7;
+      continue;
+    }
+    if (version === 7) {
+      const next = migrateV7ToV8(data as unknown as LegacyV7State);
+      data = { ...next } as unknown as Record<string, unknown>;
+      version = 8;
+      continue;
+    }
+    if (version === 8) {
+      const next = migrateV8ToV9(data as unknown as LegacyV8State);
+      data = { ...next } as unknown as Record<string, unknown>;
+      version = 9;
+      continue;
+    }
     return null;
   }
 
@@ -237,15 +337,17 @@ function migrateSaveTowardCurrent(
   const stats = normalizeHarvestStats(rawStats, plotCount);
   const rawTutorial = data.tutorial as TutorialLike | undefined;
   const tutorial = normalizeTutorial(rawTutorial);
+  const arcane = normalizeArcane(data.arcane as ArcaneLike | undefined);
 
   return {
-    version: 6,
+    version: 9,
     gold: Number(data.gold) || 0,
     plots,
     plotWorkers,
     plotSelectedCrops,
     stats,
     tutorial,
+    arcane,
     lastSavedAt: Number(data.lastSavedAt) || 0,
   };
 }
@@ -256,12 +358,53 @@ type HarvestStatsLike = {
   workerWagesTotalPaid?: unknown;
   manualCarrotsPerPlot?: unknown;
   workerCarrotsPerPlot?: unknown;
+  enchantedCarrotsTotal?: unknown;
 };
 
 type TutorialLike = {
   complete?: unknown;
   step?: unknown;
 };
+
+type ArcaneLike = {
+  wizardOfferDismissed?: unknown;
+  wizardHelpFree?: unknown;
+  wizardHelpPaid?: unknown;
+  enchantedHarvestUnlocked?: unknown;
+  nextCarrotHarvestIsEnchanted?: unknown;
+  enchantedCarrotsInventory?: unknown;
+  pathUpgrades?: unknown;
+  arcaneIntroScreen?: unknown;
+};
+
+const ARCANE_PATH_IDS: ArcanePathId[] = ["growth", "saleGold", "cheaperWages"];
+
+function normalizeArcane(raw: ArcaneLike | undefined): ArcaneState {
+  const base = defaultArcaneState();
+  if (!raw || typeof raw !== "object") return base;
+  const pathUpgrades = { ...base.pathUpgrades };
+  if (raw.pathUpgrades && typeof raw.pathUpgrades === "object") {
+    const pu = raw.pathUpgrades as Record<string, unknown>;
+    for (const id of ARCANE_PATH_IDS) {
+      if (pu[id] === true) pathUpgrades[id] = true;
+    }
+  }
+  const inv = Number(raw.enchantedCarrotsInventory);
+  const introRaw = Number(raw.arcaneIntroScreen);
+  const arcaneIntroScreen = Number.isFinite(introRaw)
+    ? Math.max(0, Math.min(3, Math.floor(introRaw)))
+    : 0;
+  return {
+    wizardOfferDismissed: Boolean(raw.wizardOfferDismissed),
+    wizardHelpFree: Boolean(raw.wizardHelpFree),
+    wizardHelpPaid: Boolean(raw.wizardHelpPaid),
+    enchantedHarvestUnlocked: Boolean(raw.enchantedHarvestUnlocked),
+    nextCarrotHarvestIsEnchanted: Boolean(raw.nextCarrotHarvestIsEnchanted),
+    enchantedCarrotsInventory: Number.isFinite(inv) ? Math.max(0, Math.floor(inv)) : 0,
+    pathUpgrades,
+    arcaneIntroScreen,
+  };
+}
 
 function normalizeHarvestStats(
   raw: HarvestStatsLike | undefined,
@@ -282,16 +425,22 @@ function normalizeHarvestStats(
     ? Math.max(0, workerTotal)
     : 0;
   const wagesFromSave = Number.isFinite(wagesRaw) ? Math.max(0, wagesRaw) : null;
-  const workerWagesTotalPaid =
+  const workerWagesTotalPaid = roundGold2(
     wagesFromSave != null
       ? wagesFromSave
-      : workerCarrotsTotalNorm * WORKER_WAGE_PER_CARROT;
+      : workerCarrotsTotalNorm * WORKER_WAGE_PER_CARROT,
+  );
+  const encRaw = Number(raw.enchantedCarrotsTotal);
+  const enchantedCarrotsTotal = Number.isFinite(encRaw)
+    ? Math.max(0, Math.floor(encRaw))
+    : 0;
   return {
     manualCarrotsTotal: Number.isFinite(manualTotal) ? Math.max(0, manualTotal) : 0,
     workerCarrotsTotal: workerCarrotsTotalNorm,
     workerWagesTotalPaid,
     manualCarrotsPerPlot: alignPerPlotCounts(mArr, plotCount),
     workerCarrotsPerPlot: alignPerPlotCounts(wArr, plotCount),
+    enchantedCarrotsTotal,
   };
 }
 

@@ -1,20 +1,33 @@
 "use client";
 
 import { useState } from "react";
+import { ArcaneTractPanel } from "@/components/ArcaneTractPanel";
 import { FarmPlot } from "@/components/FarmPlot";
 import { TutorialModal } from "@/components/TutorialModal";
 import { TutorialOneParcelPanel } from "@/components/TutorialPanel";
+import { ArcaneIntroModal } from "@/components/ArcaneIntroModal";
+import { KingdomStatsBreakdownView } from "@/components/KingdomStatsBreakdown";
+import { WizardArcaneModal } from "@/components/WizardArcaneModal";
 import { useIdleGame } from "@/hooks/useIdleGame";
+import {
+  arcaneTractUnlocked,
+  canShowWizardOffer,
+  carrotSaleGrossGold,
+  manualCarrotHarvestGold,
+  workerCarrotHarvestGold,
+} from "@/lib/game/arcane";
+import { buildKingdomStatsBreakdown } from "@/lib/game/statsBreakdown";
 import {
   plotInteraction,
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
-import {
-  MANUAL_HARVEST_GOLD,
-  WORKER_WAGE_PER_CARROT,
-} from "@/lib/game/types";
+import { WORKER_WAGE_PER_CARROT } from "@/lib/game/types";
 import styles from "./page.module.css";
+
+function displayWholeGold(value: number): number {
+  return Math.round(value);
+}
 
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {
   switch (step) {
@@ -68,9 +81,15 @@ function tutorialBanner(step: TutorialStep): { title: string; body: string } | n
 
 export default function Home() {
   const [statsOpen, setStatsOpen] = useState(false);
+  const [statsTab, setStatsTab] = useState<"summary" | "breakdown">("summary");
+  const [wizardModal, setWizardModal] = useState<"initial" | "return" | null>(
+    null,
+  );
   const {
     state,
     now,
+    growMs,
+    workerPostRipeMs,
     harvest,
     pickCropForPlot,
     buyNextPlot,
@@ -81,6 +100,11 @@ export default function Home() {
     canAffordNextWorker,
     resetKingdom,
     tutorialNext,
+    wizardAcceptFree,
+    wizardDismissOffer,
+    payWizardReturn,
+    arcaneIntroNext,
+    spendEnchantedOnPath,
   } = useIdleGame();
 
   if (!state) {
@@ -105,16 +129,69 @@ export default function Home() {
   const uiLock = tutorialUiLock(tut.step, tut.complete);
   const buyFieldDisabled = !canBuyPlot || (!tut.complete && !uiLock.allowBuyField);
 
-  const { manualCarrotsTotal, workerCarrotsTotal, workerWagesTotalPaid } =
-    state.stats;
+  const {
+    manualCarrotsTotal,
+    workerCarrotsTotal,
+    workerWagesTotalPaid,
+    enchantedCarrotsTotal,
+  } = state.stats;
   const totalCarrots = manualCarrotsTotal + workerCarrotsTotal;
-  const grossGoldFromCarrots = totalCarrots * MANUAL_HARVEST_GOLD;
-  const profitGoldFromCarrots = grossGoldFromCarrots - workerWagesTotalPaid;
+  const manualGoldEach = manualCarrotHarvestGold(state);
+  const workerGoldEach = workerCarrotHarvestGold(state);
+  const saleGrossPerCarrot = carrotSaleGrossGold(state);
+  const grossGoldFromCarrots = totalCarrots * saleGrossPerCarrot;
+  const profitGoldFromCarrots =
+    manualCarrotsTotal * manualGoldEach + workerCarrotsTotal * workerGoldEach;
+  const arcaneOpen = arcaneTractUnlocked(state);
+  const arcaneIntroOpen =
+    tut.complete && state.arcane.arcaneIntroScreen > 0 && state.arcane.arcaneIntroScreen <= 3;
+  const showWizardInitialModal =
+    tut.complete &&
+    wizardModal !== "return" &&
+    wizardModal == null &&
+    canShowWizardOffer(state);
 
   return (
     <main className={styles.page}>
       {!tut.complete ? (
         <TutorialModal step={tut.step} onNext={tutorialNext} />
+      ) : null}
+
+      {showWizardInitialModal ? (
+        <WizardArcaneModal
+          mode="initial_offer"
+          state={state}
+          onAcceptFree={() => {
+            wizardAcceptFree();
+            setWizardModal(null);
+          }}
+          onDismiss={() => {
+            wizardDismissOffer();
+            setWizardModal(null);
+          }}
+          onPayReturn={() => {}}
+        />
+      ) : null}
+
+      {tut.complete && wizardModal === "return" ? (
+        <WizardArcaneModal
+          mode="return_offer"
+          state={state}
+          onAcceptFree={() => {}}
+          onDismiss={() => setWizardModal(null)}
+          onPayReturn={() => {
+            if (payWizardReturn()) {
+              setWizardModal(null);
+            }
+          }}
+        />
+      ) : null}
+
+      {arcaneIntroOpen ? (
+        <ArcaneIntroModal
+          screen={state.arcane.arcaneIntroScreen as 1 | 2 | 3}
+          onNext={arcaneIntroNext}
+        />
       ) : null}
 
       <header className={styles.header} inert={!tut.complete ? true : undefined}>
@@ -125,7 +202,7 @@ export default function Home() {
         </p>
       </header>
 
-      <div className={styles.panel}>
+      <div className={styles.panel} inert={arcaneIntroOpen ? true : undefined}>
         <div className={styles.resources} role="status">
           <span className={`${styles.pill} ${styles.pillGold}`}>
             <span aria-hidden>🪙</span>
@@ -165,37 +242,103 @@ export default function Home() {
             </button>
             {statsOpen ? (
               <div className={styles.statsPanel} role="region" aria-label="Kingdom statistics">
-                <p className={styles.statsHint}>
-                  Every carrot sells for {MANUAL_HARVEST_GOLD} gold at market (gross). Field hands take{" "}
-                  {WORKER_WAGE_PER_CARROT} gold in wages per carrot they sell — what is left is profit to the treasury.
-                  When you harvest yourself, the crown keeps the full sale.
-                </p>
-                <dl className={styles.statsGrid}>
-                  <div className={styles.statsRow}>
-                    <dt>Carrots you harvested</dt>
-                    <dd>{manualCarrotsTotal}</dd>
+                <div
+                  className={styles.statsTabBar}
+                  role="tablist"
+                  aria-label="Kingdom stats view"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    id="stats-tab-summary"
+                    aria-selected={statsTab === "summary"}
+                    aria-controls="stats-panel-summary"
+                    className={`${styles.statsTab} ${statsTab === "summary" ? styles.statsTabActive : ""}`}
+                    onClick={() => setStatsTab("summary")}
+                  >
+                    Summary
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="stats-tab-breakdown"
+                    aria-selected={statsTab === "breakdown"}
+                    aria-controls="stats-panel-breakdown"
+                    className={`${styles.statsTab} ${statsTab === "breakdown" ? styles.statsTabActive : ""}`}
+                    onClick={() => setStatsTab("breakdown")}
+                  >
+                    Breakdown
+                  </button>
+                </div>
+
+                {statsTab === "summary" ? (
+                  <div
+                    role="tabpanel"
+                    id="stats-panel-summary"
+                    aria-labelledby="stats-tab-summary"
+                  >
+                    <p className={styles.statsHint}>
+                      <strong>Gross sales</strong> counts every carrot at the sticker price ({saleGrossPerCarrot}g).
+                      <strong> Profit</strong> is gold that actually reached the treasury from carrots: your harvests at
+                      full sticker, minus wages from worker sales (worker net is already sale − wage). Wages are shown
+                      for the ledger only — do not subtract them again from profit. Open <strong>Breakdown</strong> for
+                      equations.
+                    </p>
+                    <dl className={styles.statsGrid}>
+                      <div className={styles.statsRow}>
+                        <dt>Carrots you harvested</dt>
+                        <dd>{manualCarrotsTotal}</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Carrots field hands harvested</dt>
+                        <dd>{workerCarrotsTotal}</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Total carrots collected</dt>
+                        <dd>{totalCarrots}</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Gross sales (all carrots at sticker)</dt>
+                        <dd>{displayWholeGold(grossGoldFromCarrots)} gold</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Profit to treasury (from carrots)</dt>
+                        <dd>{displayWholeGold(profitGoldFromCarrots)} gold</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Total wages paid (ledger)</dt>
+                        <dd>{displayWholeGold(workerWagesTotalPaid)} gold</dd>
+                      </div>
+                      {arcaneOpen ? (
+                        <>
+                          <div className={styles.statsRow}>
+                            <dt>Enchanted carrots found (lifetime)</dt>
+                            <dd>{enchantedCarrotsTotal}</dd>
+                          </div>
+                          <div className={styles.statsRow}>
+                            <dt>Enchanted carrots in vault</dt>
+                            <dd>{state.arcane.enchantedCarrotsInventory}</dd>
+                          </div>
+                        </>
+                      ) : null}
+                    </dl>
                   </div>
-                  <div className={styles.statsRow}>
-                    <dt>Carrots field hands harvested</dt>
-                    <dd>{workerCarrotsTotal}</dd>
+                ) : (
+                  <div
+                    role="tabpanel"
+                    id="stats-panel-breakdown"
+                    aria-labelledby="stats-tab-breakdown"
+                  >
+                    <p className={styles.statsHint}>
+                      Formulas match the simulation code (growth, worker delay, gold, wages, enchanted drops). Use this
+                      to verify numbers if something looks off.
+                    </p>
+                    <KingdomStatsBreakdownView
+                      b={buildKingdomStatsBreakdown(state)}
+                      displayWholeGold={displayWholeGold}
+                    />
                   </div>
-                  <div className={styles.statsRow}>
-                    <dt>Total carrots collected</dt>
-                    <dd>{totalCarrots}</dd>
-                  </div>
-                  <div className={styles.statsRow}>
-                    <dt>Gross gold from carrot sales</dt>
-                    <dd>{grossGoldFromCarrots} gold</dd>
-                  </div>
-                  <div className={styles.statsRow}>
-                    <dt>Total wages paid</dt>
-                    <dd>{Math.floor(workerWagesTotalPaid)} gold</dd>
-                  </div>
-                  <div className={styles.statsRow}>
-                    <dt>Profit to treasury (from carrots)</dt>
-                    <dd>{Math.floor(profitGoldFromCarrots)} gold</dd>
-                  </div>
-                </dl>
+                )}
               </div>
             ) : null}
           </div>
@@ -221,6 +364,8 @@ export default function Home() {
                 plotIndex={i}
                 plot={plot}
                 now={now}
+                growMs={growMs}
+                workerPostRipeMs={workerPostRipeMs}
                 selectedCrop={state.plotSelectedCrops[i] ?? null}
                 hasWorker={state.plotWorkers[i] ?? false}
                 workerHireCost={nextWorkerCost}
@@ -289,7 +434,7 @@ export default function Home() {
         </div>
 
         <div className={styles.roadmap} inert={!tut.complete ? true : undefined}>
-          <p className={styles.roadmapTitle}>Coming later</p>
+          <p className={styles.roadmapTitle}>Realm paths</p>
           <div className={styles.tracts}>
             <span className={`${styles.tract} ${styles.tractActive}`}>
               🌻 Farming
@@ -297,10 +442,19 @@ export default function Home() {
             <span className={`${styles.tract} ${styles.tractSoon}`}>
               🛡️ Military (soon)
             </span>
-            <span className={`${styles.tract} ${styles.tractSoon}`}>
-              ✨ Arcane (soon)
+            <span
+              className={`${styles.tract} ${arcaneOpen ? styles.tractArcane : styles.tractSoon}`}
+            >
+              {arcaneOpen ? "✨ Arcane" : "✨ Arcane (locked)"}
             </span>
           </div>
+          {tut.complete ? (
+            <ArcaneTractPanel
+              state={state}
+              onOpenWizardReturn={() => setWizardModal("return")}
+              onSpendEnchanted={spendEnchantedOnPath}
+            />
+          ) : null}
         </div>
       </div>
 
