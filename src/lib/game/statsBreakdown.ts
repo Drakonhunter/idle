@@ -71,8 +71,6 @@ export type KingdomStatsBreakdown = {
     grossValue: number;
     wagesTotalRaw: number;
     wagesEquation: string;
-    treasuryEquation: string;
-    treasuryValue: number;
     profitEquation: string;
     profitValue: number;
   };
@@ -129,7 +127,7 @@ export function buildKingdomStatsBreakdown(state: GameState): KingdomStatsBreakd
   const grossSalesValue = totalCarrots * saleGrossPerCarrot;
   const treasuryFromCarrots = m * me + w * workerNetEach;
   const wagesRaw = state.stats.workerWagesTotalPaid;
-  const profitValue = treasuryFromCarrots - wagesRaw;
+  const profitValue = treasuryFromCarrots;
 
   return {
     timing: {
@@ -182,9 +180,7 @@ export function buildKingdomStatsBreakdown(state: GameState): KingdomStatsBreakd
         w > 0
           ? `ledger total (sum of ${wageEach}g per worker carrot, 2dp) = ${wagesRaw}`
           : "No worker carrots yet.",
-      treasuryEquation: `${m} × ${me} + ${w} × ${workerNetEach}`,
-      treasuryValue: treasuryFromCarrots,
-      profitEquation: `treasury_from_carrots − wages_total = ${treasuryFromCarrots} − ${wagesRaw}`,
+      profitEquation: `profit_to_treasury = ${m} × ${me} + ${w} × ${workerNetEach} (wages already netted on worker carrots; ledger wages are informational)`,
       profitValue,
     },
   };

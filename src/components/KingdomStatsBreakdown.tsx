@@ -124,24 +124,17 @@ export function KingdomStatsBreakdownView({ b, displayWholeGold }: Props) {
           <strong>{displayWholeGold(aggregates.grossValue)}g</strong>
         </p>
         <p className={styles.p}>
-          <strong>Gold actually added to treasury</strong> from carrots (matches your save)
-        </p>
-        <p className={styles.p}>
-          <Eq>{aggregates.treasuryEquation}</Eq> = <strong>{aggregates.treasuryValue}g</strong> → display{" "}
-          <strong>{displayWholeGold(aggregates.treasuryValue)}g</strong>
-        </p>
-        <p className={styles.p}>
-          <strong>Total wages paid</strong> (ledger, 2dp in save)
-        </p>
-        <p className={styles.p}>
-          <Eq>{aggregates.wagesEquation}</Eq>
-        </p>
-        <p className={styles.p}>
-          <strong>Profit (carrots)</strong> — treasury from carrots minus wages
+          <strong>Profit to treasury (from carrots)</strong> — same as Summary; worker net already deducts wages
         </p>
         <p className={styles.p}>
           <Eq>{aggregates.profitEquation}</Eq> = <strong>{aggregates.profitValue}g</strong> → display{" "}
           <strong>{displayWholeGold(aggregates.profitValue)}g</strong>
+        </p>
+        <p className={styles.p}>
+          <strong>Total wages paid</strong> (ledger only — do not subtract again from profit)
+        </p>
+        <p className={styles.p}>
+          <Eq>{aggregates.wagesEquation}</Eq>
         </p>
       </section>
     </div>

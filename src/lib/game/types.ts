@@ -10,7 +10,7 @@ export type ArcaneState = {
   wizardOfferDismissed: boolean;
   /** Accepted the wizard’s help for free at the offer. */
   wizardHelpFree: boolean;
-  /** Paid 1000g to unlock after refusing the first offer. */
+  /** Paid gold to unlock after refusing the first offer. */
   wizardHelpPaid: boolean;
   /** First arcane node: random enchanted drops from carrot harvests. */
   enchantedHarvestUnlocked: boolean;
@@ -19,9 +19,13 @@ export type ArcaneState = {
   /** Spent on path upgrades (each costs 1 enchanted carrot). */
   enchantedCarrotsInventory: number;
   pathUpgrades: ArcanePathUpgrades;
+  /**
+   * Post-wizard tutorial: 0 = off (done or not started), 1–3 = current step screen.
+   */
+  arcaneIntroScreen: number;
 };
 
-export const ARCANE_WIZARD_RETURN_COST = 1000;
+export const ARCANE_WIZARD_RETURN_COST = 100;
 /** Chance for a carrot harvest to yield an enchanted carrot after the node is unlocked (after the guaranteed first). */
 export const ARCANE_ENCHANTED_DROP_CHANCE = 0.01;
 
@@ -38,6 +42,7 @@ export function defaultArcaneState(): ArcaneState {
       saleGold: false,
       cheaperWages: false,
     },
+    arcaneIntroScreen: 0,
   };
 }
 
@@ -84,7 +89,7 @@ export type TutorialState = {
 };
 
 export type GameState = {
-  version: 8;
+  version: 9;
   gold: number;
   plots: PlotState[];
   /** One hired worker per plot index; auto-harvests that field after GROW_MS once ripe. */

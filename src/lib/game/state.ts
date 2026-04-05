@@ -125,7 +125,7 @@ function finalizeTutorial(state: GameState): GameState {
 export function createInitialState(now: number): GameState {
   const n = STARTING_PLOT_COUNT;
   return finalizeTutorial({
-    version: 8,
+    version: 9,
     gold: STARTING_GOLD,
     plots: freshPlots(n),
     plotWorkers: freshWorkerSlots(n),
@@ -384,6 +384,7 @@ export function acceptWizardHelpFree(state: GameState, now: number): GameState {
       wizardHelpFree: true,
       enchantedHarvestUnlocked: true,
       nextCarrotHarvestIsEnchanted: true,
+      arcaneIntroScreen: 1,
     },
     lastSavedAt: now,
   };
@@ -411,7 +412,19 @@ export function payWizardForHelp(state: GameState, now: number): GameState | nul
       wizardHelpPaid: true,
       enchantedHarvestUnlocked: true,
       nextCarrotHarvestIsEnchanted: true,
+      arcaneIntroScreen: 1,
     },
+    lastSavedAt: now,
+  };
+}
+
+export function advanceArcaneIntro(state: GameState, now: number): GameState {
+  const screen = state.arcane.arcaneIntroScreen;
+  if (screen <= 0) return state;
+  const nextScreen = screen >= 3 ? 0 : screen + 1;
+  return {
+    ...state,
+    arcane: { ...state.arcane, arcaneIntroScreen: nextScreen },
     lastSavedAt: now,
   };
 }
@@ -429,6 +442,7 @@ export function spendEnchantedCarrotOnPath(
       ...state.arcane,
       enchantedCarrotsInventory: state.arcane.enchantedCarrotsInventory - 1,
       pathUpgrades: { ...state.arcane.pathUpgrades, [path]: true },
+      arcaneIntroScreen: 0,
     },
     lastSavedAt: now,
   };

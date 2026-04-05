@@ -5,6 +5,7 @@ import { ArcaneTractPanel } from "@/components/ArcaneTractPanel";
 import { FarmPlot } from "@/components/FarmPlot";
 import { TutorialModal } from "@/components/TutorialModal";
 import { TutorialOneParcelPanel } from "@/components/TutorialPanel";
+import { ArcaneIntroModal } from "@/components/ArcaneIntroModal";
 import { KingdomStatsBreakdownView } from "@/components/KingdomStatsBreakdown";
 import { WizardArcaneModal } from "@/components/WizardArcaneModal";
 import { useIdleGame } from "@/hooks/useIdleGame";
@@ -14,7 +15,6 @@ import {
   carrotSaleGrossGold,
   manualCarrotHarvestGold,
   workerCarrotHarvestGold,
-  workerCarrotWageAmount,
 } from "@/lib/game/arcane";
 import { buildKingdomStatsBreakdown } from "@/lib/game/statsBreakdown";
 import {
@@ -22,16 +22,11 @@ import {
   tutorialUiLock,
 } from "@/lib/game/tutorialInteraction";
 import type { TutorialStep } from "@/lib/game/types";
-import { WORKER_WAGE_PER_CARROT, roundGold2 } from "@/lib/game/types";
+import { WORKER_WAGE_PER_CARROT } from "@/lib/game/types";
 import styles from "./page.module.css";
 
 function displayWholeGold(value: number): number {
   return Math.round(value);
-}
-
-function wageRateLabel(goldPerCarrot: number): string {
-  const q = roundGold2(goldPerCarrot);
-  return Number.isInteger(q) ? `${q}` : q.toFixed(2);
 }
 
 function tutorialBanner(step: TutorialStep): { title: string; body: string } | null {
@@ -107,7 +102,8 @@ export default function Home() {
     tutorialNext,
     wizardAcceptFree,
     wizardDismissOffer,
-    tryPayWizardReturn,
+    payWizardReturn,
+    arcaneIntroNext,
     spendEnchantedOnPath,
   } = useIdleGame();
 
@@ -144,10 +140,11 @@ export default function Home() {
   const workerGoldEach = workerCarrotHarvestGold(state);
   const saleGrossPerCarrot = carrotSaleGrossGold(state);
   const grossGoldFromCarrots = totalCarrots * saleGrossPerCarrot;
-  const treasuryGoldFromCarrots =
+  const profitGoldFromCarrots =
     manualCarrotsTotal * manualGoldEach + workerCarrotsTotal * workerGoldEach;
-  const profitGoldFromCarrots = treasuryGoldFromCarrots - workerWagesTotalPaid;
   const arcaneOpen = arcaneTractUnlocked(state);
+  const arcaneIntroOpen =
+    tut.complete && state.arcane.arcaneIntroScreen > 0 && state.arcane.arcaneIntroScreen <= 3;
   const showWizardInitialModal =
     tut.complete &&
     wizardModal !== "return" &&
@@ -183,10 +180,17 @@ export default function Home() {
           onAcceptFree={() => {}}
           onDismiss={() => setWizardModal(null)}
           onPayReturn={() => {
-            if (tryPayWizardReturn()) {
+            if (payWizardReturn()) {
               setWizardModal(null);
             }
           }}
+        />
+      ) : null}
+
+      {arcaneIntroOpen ? (
+        <ArcaneIntroModal
+          screen={state.arcane.arcaneIntroScreen as 1 | 2 | 3}
+          onNext={arcaneIntroNext}
         />
       ) : null}
 
@@ -198,7 +202,7 @@ export default function Home() {
         </p>
       </header>
 
-      <div className={styles.panel}>
+      <div className={styles.panel} inert={arcaneIntroOpen ? true : undefined}>
         <div className={styles.resources} role="status">
           <span className={`${styles.pill} ${styles.pillGold}`}>
             <span aria-hidden>🪙</span>
@@ -274,11 +278,11 @@ export default function Home() {
                     aria-labelledby="stats-tab-summary"
                   >
                     <p className={styles.statsHint}>
-                      Each carrot sells at <strong>{saleGrossPerCarrot}g</strong> (sticker). You keep that full amount
-                      when you harvest. Workers net <strong>{workerGoldEach}g</strong> to the treasury each (
-                      <strong>{saleGrossPerCarrot}g</strong> sale −{" "}
-                      {wageRateLabel(workerCarrotWageAmount(state))}g wages). Gross below counts every carrot at sticker;
-                      profit uses actual treasury inflow. Open <strong>Breakdown</strong> for equations.
+                      <strong>Gross sales</strong> counts every carrot at the sticker price ({saleGrossPerCarrot}g).
+                      <strong> Profit</strong> is gold that actually reached the treasury from carrots: your harvests at
+                      full sticker, minus wages from worker sales (worker net is already sale − wage). Wages are shown
+                      for the ledger only — do not subtract them again from profit. Open <strong>Breakdown</strong> for
+                      equations.
                     </p>
                     <dl className={styles.statsGrid}>
                       <div className={styles.statsRow}>
@@ -298,16 +302,12 @@ export default function Home() {
                         <dd>{displayWholeGold(grossGoldFromCarrots)} gold</dd>
                       </div>
                       <div className={styles.statsRow}>
-                        <dt>Gold into treasury (from carrots)</dt>
-                        <dd>{displayWholeGold(treasuryGoldFromCarrots)} gold</dd>
-                      </div>
-                      <div className={styles.statsRow}>
-                        <dt>Total wages paid</dt>
-                        <dd>{displayWholeGold(workerWagesTotalPaid)} gold</dd>
-                      </div>
-                      <div className={styles.statsRow}>
                         <dt>Profit to treasury (from carrots)</dt>
                         <dd>{displayWholeGold(profitGoldFromCarrots)} gold</dd>
+                      </div>
+                      <div className={styles.statsRow}>
+                        <dt>Total wages paid (ledger)</dt>
+                        <dd>{displayWholeGold(workerWagesTotalPaid)} gold</dd>
                       </div>
                       {arcaneOpen ? (
                         <>

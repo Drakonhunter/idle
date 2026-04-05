@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { carrotGrowMs, carrotWorkerPostRipeMs } from "@/lib/game/arcane";
 import {
   acceptWizardHelpFree,
+  advanceArcaneIntro,
   advanceStateToNow,
   advanceTutorialIntro,
   buyPlot,
@@ -144,22 +145,29 @@ export function useIdleGame() {
     });
   }, [setAndPersist]);
 
-  const tryPayWizardReturn = useCallback((): boolean => {
-    let ok = false;
+  const payWizardReturn = useCallback((): boolean => {
+    let paid = false;
     setState((s) => {
       if (!s) return s;
       const t = Date.now();
       setNow(t);
       const base = advanceStateToNow(s, t, Math.random);
-      const paid = payWizardForHelp(base, t);
-      if (paid) {
-        ok = true;
-        return advanceStateToNow(paid, t, Math.random);
+      const next = payWizardForHelp(base, t);
+      if (next) {
+        paid = true;
+        return advanceStateToNow(next, t, Math.random);
       }
       return base;
     });
-    return ok;
+    return paid;
   }, []);
+
+  const arcaneIntroNext = useCallback(() => {
+    setAndPersist((s) => {
+      const t = Date.now();
+      return advanceArcaneIntro(s, t);
+    });
+  }, [setAndPersist]);
 
   const spendEnchantedOnPath = useCallback(
     (path: ArcanePathId) => {
@@ -213,7 +221,8 @@ export function useIdleGame() {
     tutorialNext,
     wizardAcceptFree,
     wizardDismissOffer,
-    tryPayWizardReturn,
+    payWizardReturn,
+    arcaneIntroNext,
     spendEnchantedOnPath,
   };
 }

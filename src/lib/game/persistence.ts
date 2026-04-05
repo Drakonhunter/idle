@@ -18,7 +18,7 @@ import {
   createInitialState,
 } from "./state";
 
-const CURRENT_SAVE_VERSION = 8 as const;
+const CURRENT_SAVE_VERSION = 9 as const;
 
 type LegacyV1Plot =
   | { kind: "empty" }
@@ -223,8 +223,28 @@ type LegacyV7State = {
   lastSavedAt: number;
 };
 
+type LegacyV8State = {
+  version: 8;
+  gold: number;
+  plots: GameState["plots"];
+  plotWorkers: boolean[];
+  plotSelectedCrops: (CropId | null)[];
+  stats: GameState["stats"];
+  tutorial: GameState["tutorial"];
+  arcane: GameState["arcane"];
+  lastSavedAt: number;
+};
+
+/** v8 → v9: arcane intro screen flag; bump version only. */
+function migrateV8ToV9(parsed: LegacyV8State): GameState {
+  return {
+    ...parsed,
+    version: 9,
+  };
+}
+
 /** v7 → v8: lifetime enchanted carrot counter in stats. */
-function migrateV7ToV8(parsed: LegacyV7State): GameState {
+function migrateV7ToV8(parsed: LegacyV7State): LegacyV8State {
   const spentOnTrees = Object.values(parsed.arcane.pathUpgrades).filter(Boolean).length;
   const floorFromArcane =
     parsed.arcane.enchantedCarrotsInventory + spentOnTrees;
@@ -291,6 +311,12 @@ function migrateSaveTowardCurrent(
       version = 8;
       continue;
     }
+    if (version === 8) {
+      const next = migrateV8ToV9(data as unknown as LegacyV8State);
+      data = { ...next } as unknown as Record<string, unknown>;
+      version = 9;
+      continue;
+    }
     return null;
   }
 
@@ -314,7 +340,7 @@ function migrateSaveTowardCurrent(
   const arcane = normalizeArcane(data.arcane as ArcaneLike | undefined);
 
   return {
-    version: 8,
+    version: 9,
     gold: Number(data.gold) || 0,
     plots,
     plotWorkers,
@@ -348,6 +374,7 @@ type ArcaneLike = {
   nextCarrotHarvestIsEnchanted?: unknown;
   enchantedCarrotsInventory?: unknown;
   pathUpgrades?: unknown;
+  arcaneIntroScreen?: unknown;
 };
 
 const ARCANE_PATH_IDS: ArcanePathId[] = ["growth", "saleGold", "cheaperWages"];
@@ -363,6 +390,10 @@ function normalizeArcane(raw: ArcaneLike | undefined): ArcaneState {
     }
   }
   const inv = Number(raw.enchantedCarrotsInventory);
+  const introRaw = Number(raw.arcaneIntroScreen);
+  const arcaneIntroScreen = Number.isFinite(introRaw)
+    ? Math.max(0, Math.min(3, Math.floor(introRaw)))
+    : 0;
   return {
     wizardOfferDismissed: Boolean(raw.wizardOfferDismissed),
     wizardHelpFree: Boolean(raw.wizardHelpFree),
@@ -371,6 +402,7 @@ function normalizeArcane(raw: ArcaneLike | undefined): ArcaneState {
     nextCarrotHarvestIsEnchanted: Boolean(raw.nextCarrotHarvestIsEnchanted),
     enchantedCarrotsInventory: Number.isFinite(inv) ? Math.max(0, Math.floor(inv)) : 0,
     pathUpgrades,
+    arcaneIntroScreen,
   };
 }
 
